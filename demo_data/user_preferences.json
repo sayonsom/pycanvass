@@ -1,0 +1,6 @@
+{
+  "visualization":{
+    "color_scheme": "gnuplot"
+  },
+  "event_log": "debug"
+}

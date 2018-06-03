@@ -1,0 +1,11 @@
+numpy
+networkx
+matplotlib
+scapy
+pandas
+sklearn
+
+[test]
+coverage
+pytest
+pytest-cov

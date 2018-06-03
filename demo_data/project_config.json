@@ -1,0 +1,30 @@
+{
+    "project_name" : "example_project",
+    "author" : "Sayonsom Chanda",
+    "simulation_no" : "1",
+    "copyright" : "2018",
+    "model_license" : "non-public",
+    "location": "Idaho Falls, ID",
+    "data":{
+      "nodes": "C:\\Users\\Sayon\\Documents\\CANVASS\\Example_Project\\node-file.csv",
+      "edges": "C:\\Users\\Sayon\\Documents\\CANVASS\\Example_Project\\edge-file.csv",
+      "threats": "C:\\Users\\Sayon\\Documents\\CANVASS\\Example_Project\\threat-anchor-file.csv"
+    },
+    "event" : {
+      "type" : "hurricane",
+      "known_intensity" : "5"
+    },
+    "solver": {
+      "engine": "gridlabd",
+      "connected" : "False",
+      "co_simulation": "False"
+    },
+    "real_time":{
+      "connected" : "False",
+      "ip" : "",
+      "port" : ""
+    },
+    "results":{
+      "simulation_folder" : "Not specified"
+    }
+  }
