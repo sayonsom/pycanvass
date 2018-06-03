@@ -3,6 +3,9 @@ It has a unique resiliency computation engine, and it enables integration with o
 
 PyCanvass was developed by Sayonsom Chanda, at Washington State University - and is still maintained by him. If you have any questions, or find bugs - please email: sayon@ieee.org
 
+YouTube Introductory Video Link:
+[https://youtu.be/ybwCLNTrps0](https://youtu.be/ybwCLNTrps0)
+
 Please contribute to the project.
 
 

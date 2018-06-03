@@ -1,3 +1,0 @@
-[console_scripts]
-pycanvass = pycanvass.all:main
-
