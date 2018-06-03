@@ -9,7 +9,8 @@ Resources
 Videos
 ------
 
-1. `Intro to PyCANVASS<https://youtu.be/ybwCLNTrps0>`_.
+1. `Intro to PyCANVASS
+<https://youtu.be/ybwCLNTrps0>`_.
 
 Please contribute to the project.
 
