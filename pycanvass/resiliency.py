@@ -4,6 +4,9 @@ import csv
 import random
 import numpy as np
 import pycanvass.data_bridge as db
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
 
 def distant_between_two_points(p1, p2):
     """
@@ -162,11 +165,15 @@ def load_and_demand_query(path):
 
     print("[i] Number of loads = {}, Demand = {} kW, Generation = {} kW".format(loads, demand_kw, gen_kw))
     print("[i] Edge Statuses of the path:")
-    print(edge_status_list)
+    pp.pprint(edge_status_list)
+    
     print("[i] Switch Status:")
-    print(edge_switches)
-
-    return [edge_status_list, edge_switches]
+    pp.pprint(edge_switches)
+    load_and_demand_query_dict = {}
+    load_and_demand_query_dict["edge_status"] = edge_status_list
+    load_and_demand_query_dict["switch_status"] = edge_switches
+    
+    return load_and_demand_query_dict
 
 
 

@@ -53,6 +53,7 @@ If you use PyCanvass in your simulations, please cite the library in your work. 
 Also, we will soon release a website that features different papers that have used PyCanvass. Please let us know so that we can help increase the visibility of your work by featuring it on our website. 
 
 1. IEEE:
+
 .. code-block::
 
     S. Chanda, A. Srivastava, R. Hovsapian, "pycanvass: an Open Source Cyber-Attack and Network Vulnerability Assessment Tool for Resiliency Analysis of Distribution Systems", IEEE Trans. Smart Grid (to be submitted)
