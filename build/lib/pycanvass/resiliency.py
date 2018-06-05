@@ -1,20 +1,3 @@
-# # background calculations
-#
-# total_available_gen = 450
-# critical_loads = 350
-# hours_available = 40
-# paths_available = 40
-#
-# # model
-#
-# # objective function
-#
-# # constraints
-#
-# # solution
-
-# definitions:
-
 import pycanvass.global_variables as gv
 import networkx as nx
 import csv
@@ -145,15 +128,45 @@ def load_and_demand_query(path):
     gens = 0
     demand_kw = 0.0
     gen_kw = 0.0
+    e_file = gv.filepaths["edges"]
+    edge_status_list = {}
+    edge_switches = {}
     for p in path:
         n = node_object_from_node_name(p)
+        i = path.index(p)
+        if i < len(path)-1:
+            q = path[i+1]
+            edge_of_path_name_1 = p + "_to_" + q
+            edge_of_path_name_2 = q + "_to_" + p
+            edge_search_result_1 = db._edge_search(edge_of_path_name_1)
+            edge_search_result_2 = db._edge_search(edge_of_path_name_2)
+            try:
+                with open(e_file, 'r+') as f:
+                    csvr = csv.reader(f)
+                    csvr = list(csvr)
+                    for row in csvr:
+                        if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
+                            if edge_search_result_1 != 0 or edge_search_result_2 != 0:
+                                edge_status_list[row[0]] = row[4]
+                            if row[1].lstrip == "switch":
+                                edge_switches[row[0]] = row[4]
+            except:
+                print("[x] Edge could not be queried for status for the nodes.")
+                
         if int(n.load) > 0:
             loads += 1
             demand_kw += float(n.load)
         if n.gen.lstrip() != "inf":
             gen_kw += float(n.gen)
 
-    print("Number of loads = {}, Demand = {} kW, Generation = {} kW".format(loads, demand_kw, gen_kw))
+
+    print("[i] Number of loads = {}, Demand = {} kW, Generation = {} kW".format(loads, demand_kw, gen_kw))
+    print("[i] Edge Statuses of the path:")
+    print(edge_status_list)
+    print("[i] Switch Status:")
+    print(edge_switches)
+
+    return [edge_status_list, edge_switches]
 
 
 
@@ -372,7 +385,10 @@ def resiliency_upstream(graph, edgelist, event):
 def weigh_the_sections(graph, attr_name="impact_on_edge"):
     edgelist = graph.edges()
     for e in edgelist:
-        graph[e[0]][e[1]][attr_name] = random.random()
+        edge_name = e[0].lstrip() + "_to_" + e[1].lstrip()
+        x = impact_on_edge(edge_name)
+        graph[e[0]][e[1]][attr_name] = x
+        # print("[i] Weighing {} by anticipated event impact {}".format(edge_name, x))
 
 
 

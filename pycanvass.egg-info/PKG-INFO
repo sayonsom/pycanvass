@@ -1,0 +1,34 @@
+Metadata-Version: 2.1
+Name: pycanvass
+Version: 0.0.2.5
+Summary: Python API for Cyber Attack and Network Vulnerability Assessment Software for Smartgrid
+Home-page: http://github.com/sayonsom/pycanvass
+Author: Sayonsom Chanda
+Author-email: sayon@ieee.org
+License: GPL
+Description: PyCanvass is an open source simulation software for computing resiliency of Smart Grid and power systems critical infrastructure.
+        It has a unique resiliency computation engine, and it enables integration with other industry-standard power system simulation software like GridLAB-D, and Real-Time Digital Simulators.
+        
+        PyCanvass was developed by Sayonsom Chanda, at Washington State University - and is still maintained by him. If you have any questions, or find bugs - please email: sayon@ieee.org
+        
+        
+        Resources
+        =========
+        Videos
+        ------
+        
+        1. `Intro to PyCANVASS
+        <https://youtu.be/ybwCLNTrps0>`_.
+        
+        Please contribute to the project.
+        
+        
+        
+Keywords: smartgrid power system substation cyber-attack simulation rtds gridlabd python
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: License :: OSI Approved :: GNU General Public License v2 (GPLv2)
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Provides-Extra: test

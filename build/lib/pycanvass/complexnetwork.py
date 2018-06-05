@@ -14,6 +14,8 @@ import random
 import logging
 import pycanvass.global_variables as gv
 import sys
+import time
+import datetime
 
 from networkx import Graph
 
@@ -485,11 +487,12 @@ def summary(graph):
 # V #
 # # #
 
-def visualize(graph):
+def visualize(graph, show=False, save=True):
     """
     Help visualize the network graph and some of its resilience properties
     :param graph:
-    :param
+    :param show: (Default is False)
+    :param save: (Default is True)
     :return:
     """
     focus = "impact_on_edge"
@@ -506,7 +509,7 @@ def visualize(graph):
     values = []
 
     for e in graph.edges():
-        values.append(graph[str(e[0])][str(e[1])][focus])
+        values.append(graph[str(e[0])][str(e[1])][focus]*100)
 
     color_scheme = plt.get_cmap(color_scheme)
     c_norm = colors.Normalize(vmin=0, vmax=7)
@@ -533,4 +536,12 @@ def visualize(graph):
     nx.draw_networkx_labels(graph,
                             pos=label_pos,
                             edge_labels=edge_labels)
-    plt.show()
+    
+    if show==True:
+        plt.show()
+
+    if save:
+        ts = time.time()
+        st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H_%M_%S')
+        filename = "visualization" + st + ".png"
+        plt.savefig(filename)

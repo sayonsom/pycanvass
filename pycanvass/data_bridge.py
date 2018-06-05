@@ -1,4 +1,4 @@
-import socket
+import subprocess
 import sys
 import time
 from collections import defaultdict
@@ -7,10 +7,13 @@ import csv
 import pycanvass.global_variables as gv
 import pycanvass.blocks as blocks
 from scapy.all import *
+import socket
+import socketserver
+from socketserver import ThreadingTCPServer, StreamRequestHandler
+from struct import *
 
-# Create a TCP/IP socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+global received_datapoints
+received_datapoints = 1
 
 class CyberNode:
     """
@@ -26,6 +29,67 @@ class CyberNode:
         self.encryption = encryption
         self.CVSS = CVSS
         self.firewall = firewall
+
+class PairDevices(StreamRequestHandler):
+    def handle(self):
+
+        ar2 = []
+        
+        for w in range(received_datapoints):
+            ar2.append(0.0)
+        print(ar2)
+
+        print ('[i] Ready to stream data from {}'.format(self.client_address))
+        conn = self.request
+        while True:
+            msg = conn.recv(1024)
+            if not msg:
+                conn.close()
+                print ('[i] Disconnected from {}'.format(self.client_address))
+                break
+
+            print("[i] Querying device: {}".format(self.client_address))
+            
+            unpacking_string = '>' + "f"*received_datapoints
+            ar = unpack(unpacking_string, msg)
+            print("[i] Data Received:")
+            for c in range(received_datapoints):
+                print(">> %8.3f" % ar[i])
+
+            print("[i] Transmitted Data: ")
+
+            
+            # if ((ar[4] > 5.0) & (ar[4] < 95.0)):
+            #     msg2 = pack('>fI', (ar[2] - ar[3]), 1)  # Pin is negative
+            # elif (ar[4] < 5.0):
+            #     # load shedding
+            #     msg2 = pack('>fI', 0.0, 0)
+            # else:
+            #     # prevent overcharging
+            #     msg2 = pack('>fI', 0.0, 1)
+
+            # conn.send(msg2)
+            print("\n")
+
+    
+
+
+def get_data(external_device,PORT,datapoints):
+    """
+    external_device = Name of the client device from which data is to be received.
+    PORT = port of the host computer/controller device
+    datapoints = Number of data points expected from external device
+    """
+    server = ThreadingTCPServer(('', PORT), PairDevices)
+    received_datapoints = datapoints
+    print ("[i] Opening Port: {}\n[i] Expecting {} data points\n[?] Waiting for connection from {} >>".format(PORT, datapoints, external_device))
+    server.serve_forever()
+
+# Create a TCP/IP socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+
+
 
 
 def setup_new_device(cyber_node_name, ip_value, port_value, protocol_name, cvss = None, firewall = False):
@@ -53,11 +117,25 @@ def pair_devices(from_device, to_device, protocol, handshake=False, direction="b
     src_port = from_device.port
     dst_ip = to_device.ip
     dst_port = to_device.port
+    status = False
+
     try:
-        packet = IP(dst=dst_ip) / TCP() / "Test Connection"
-        uans, ans = sr(packet)
-        print(ans.summary())
-        print(uans.summary())
+
+        # Configure subprocess to hide the console window
+        info = subprocess.STARTUPINFO()
+        info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = subprocess.SW_HIDE
+
+        output = subprocess.Popen(['ping', '-n', '1', '-w', '500', str(dst_ip)], stdout=subprocess.PIPE, startupinfo=info).communicate()[0]
+
+        if "Destination host unreachable" in output.decode('utf-8'):
+            print("[i] {} is Offline >> Unreachable".format(to_device.name))
+        elif "Request timed out" in output.decode('utf-8'):
+            print("[i] {} is Offline >> Timed out".format(to_device.name))
+        else:
+            print("[i] Connection established between {} and {}".format(to_device.name, from_device.name))
+            status = True
+
         if handshake is True:
             try:
                 print("[i] Confirming TCP connection with 3-way handshake")
@@ -80,6 +158,8 @@ def pair_devices(from_device, to_device, protocol, handshake=False, direction="b
 
     except:
         print("[x] Failed to pair {} and {}".format(from_device.name, to_device.name))
+
+    return status
 
 
 def send_data_packet(to_device, payload="100", protocol="TCP"):
@@ -129,9 +209,7 @@ def _print_data_packet(packet):
     print("Received Data Packet")
     print(packet.summary())
 
-def get_data(device_name):
-    filter_statement = device_name.protocol + " and " + device_name.ip + " port " + device_name.port
-    sniff(filter=filter_statement, prn=_print_data_packet, count=3)
+
 
 def connect_and_control(device, ip_addr, port, polling_interval=1):
     """
