@@ -13,13 +13,15 @@ Using `pip`
 
 These installations are stable and well-supported. The most preferred way of installing PyCanvass is using `pip`:
 
-.. code-block:: sh
+.. code-block::
+
     pip install pycanvass
 
 
 If you have previously installed PyCanvass, it is recommended to frequently
 
-.. code-block:: sh
+.. code-block::
+
     pip uninstall pycanvass
     pip install --upgrade pycanvass
 
