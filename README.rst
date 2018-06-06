@@ -1,7 +1,5 @@
 .. image:: https://preview.ibb.co/d428iT/pycanvass.png
 
-.. image:: https://img.shields.io/badge/Build-Alpha%203-blue.svg
-
 PyCanvass is an open source simulation software for computing resiliency of Smart Grid and power systems critical infrastructure.
 It has a unique resiliency computation engine, and it enables integration with other industry-standard power system simulation software like GridLAB-D, and Real-Time Digital Simulators.
 
