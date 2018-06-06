@@ -89,9 +89,12 @@ def reconfigure(from_node, to_node, commit=False, control=False):
     wg = nx.DiGraph()  # wg: working graph
     wg.add_edges_from(edges)
     down_switch_dict = downstream_edge_info(wg, from_node)
+    modified_down_switch_dict = {}
     up_switch_dict = upstream_edge_info(wg, from_node)
     print("Down switches from node:")
     pp.pprint(down_switch_dict)
+    for k, v in down_switch_dict.items():
+
     print("Up switches from node:")
     pp.pprint(up_switch_dict)
     
