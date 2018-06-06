@@ -10,7 +10,7 @@ PyCanvass was developed by `Sayonsom Chanda
 Typical Use-Cases
 =================
 
-- Easy power system modeling – you can use it quickly build GridLAB-D Models
+- Easy power system modeling – you can use it to quickly build GridLAB-D Models.
 - Data-driven Disaster response design (through reconfiguration algorithms)
 - Cyber-physical power grid simulations
 - Resource optimization during extreme events
@@ -56,7 +56,34 @@ Assumes you have Python installed and already set to your path.
 Getting Started Guide
 =====================
 
-[Coming soon]
+[Full documentation is coming soon]
+
+*Your first pyCanvass program* 
+
+We try to make this library accessible to non-programmers, programming beginners, non-power engineers, as well as the most hardened software-professionals. Feel free to read in detail of each step, or skip - as appropriate for your skill-level. 
+
+- Make sure you have the latest versions of pyCanvass, Python, and GridLAB-D installed correctly.
+- Create a new folder, and inside that include a user_preferences.json file, and project_config.json file. Examples of these are in the demo-data. 
+- Also download the example node-file.csv, node-file.csv, and threat-file.csv - and keep them in the same folder.
+- Using any text editor (like Notepad++ or VS Code or Sublime Text), open the project_config.json file.
+- Edit the data section of the project_config file, replacing the paths mentioned in the nodes, edges, and threat section of the file with the file path of where you just placed the node-file.csv, edge-file.csv, and threat-file.csv.
+- In your text editor, open a new file and save as "mymodel.py"
+- In mymodel.py, write:
+
+   .. code-block::
+    
+    from pycanvass.all import *
+    project, nodes, edges = load_project()
+
+- Now you are ready to perform network Vulnerability analysis. If you want to find the least risk path, i.e. the most resilient path, from a node, say F1_2 in the node-file.csv in the sample to another node, F2_3, just add the following code to your program above:
+    
+    .. code-block::
+
+    paths = path_search(mygraph, 'F1_2', 'F2_3', criterion="least_risk")
+    print(paths)
+
+
+
 
 Citation
 ========
