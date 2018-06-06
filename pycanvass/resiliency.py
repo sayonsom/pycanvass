@@ -28,7 +28,7 @@ def upstream_edge_info(wg, n):
         edge_search_result_1 = db._edge_search(edge_of_path_name_1)
         edge_search_result_2 = db._edge_search(edge_of_path_name_2)
         try:
-            with open(e_file, 'r+') as f:
+            with open(e_file, 'r') as f:
                 csvr = csv.reader(f)
                 csvr = list(csvr)
                 for row in csvr:

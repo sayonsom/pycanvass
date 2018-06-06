@@ -5,7 +5,6 @@ This library does all the complex network analysis required by the program
 
 import networkx as nx
 import matplotlib
-matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
@@ -16,14 +15,30 @@ import pycanvass.global_variables as gv
 import sys
 import time
 import datetime
+import os
+from pathlib import Path
 
 from networkx import Graph
 
 attempts = 0
 settings = ""
 
+
+
 def _input_user_pref_file():
-    user_preference_path=input("\n[i] Please enter the path to your user-preferences file (*.JSON):\n")
+    current_folder_path, current_folder_name = os.path.split(os.getcwd())
+    default_json_file_name = current_folder_path + "\\user_preferences.json"
+    default_json_file_name = Path(default_json_file_name)
+
+    if default_json_file_name.exists():
+        print("[i] Loaded default user preferences file: {}".format(default_json_file_name))
+        time.sleep(0.5)
+        user_preference_path = default_json_file_name
+    else:
+        print("[x] Default user preferences file not found.")
+        user_preference_path=input("\n[i] Please enter the path to your user-preferences file (*.JSON):\n")
+        
+    
     return str(user_preference_path)
 
 while attempts < 4:

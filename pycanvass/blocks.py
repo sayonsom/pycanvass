@@ -109,12 +109,13 @@ def rebuild():
     return rebuilt_network_dict
 
 
-def load_project(filename):
+def load_project():
     """
     Creates the JSON object that has all the parameters users can modify to customize the project
     :param filename:
     :return: JSON object
     """
+    filename = gv.filepaths["model"]
     project_file = open(filename)
     gv.project = json.load(project_file)
     project_file.close()

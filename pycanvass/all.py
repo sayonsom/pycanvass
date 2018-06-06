@@ -1,4 +1,6 @@
 import json
+import os
+from pathlib import Path
 from pycanvass.global_variables import *
 import re
 from pycanvass.blocks import *
@@ -16,12 +18,24 @@ def banner():
     print("|----------------------------------------------|")
 
 
-def validate_config_file():
-    print("[i] Please include the configuration file in your Python Code like follows, towards the top of your script:")
-    print(">> config_file_name = \"<put-in-the-path-to-your-file-here.>\"")
-    print(">> project, nodes, blocks = load_project(config_file_name)")
+def _input_project_config_file():
+    current_folder_path, current_folder_name = os.path.split(os.getcwd())
+    default_json_file_name = current_folder_path + "\\project_config.json"
+    default_json_file_name = Path(default_json_file_name)
 
-
+    if default_json_file_name.exists():
+        print("[i] Loaded default project configuration file: {}".format(default_json_file_name))
+        project_config_path = default_json_file_name
+        gv.filepaths["model"] = project_config_path
+        return True
+    else:
+        print("[x] Default project configuration file not found.")
+        project_config_path= input("\n[i] Please enter the path to the project file (*.JSON):\n")
+        gv.filepaths["model"] = project_config_path
+        return project_config_path
+    
+    gv.filepaths["model"] = project_config_path
+    
 
 def build_config_file():
     config_file_name = "auto_project_config.json"
@@ -50,21 +64,29 @@ def build_config_file():
 
 def setup():
     banner()
+    try:
+        if _input_project_config_file() is True:
+            return 
+        else:
+            print("[x] Did not find a default project configuration file.\n\n")
+            make_config_file = input("[?] Please make one of the following choices:\n"
+                "[1] Provide path to project configuration folder\n"
+                "[2] No, make a config file for me\n")
 
-    make_config_file = input("[?] Do you have an existing configuration file?:\n"
-          "[1] Yes\n"
-          "[2] No, make a config file for me\n"
-          "[3] Load example distribution system\n[>] (Enter a number) ")
-    if make_config_file.lstrip() == "1":
-        config_file_path = input("[?] Please enter the full path to your configuration file:\n")
-        validate_config_file()
-    elif make_config_file.lstrip() == "2":
-        build_config_file()
-    elif make_config_file.lstrip() == "3":
-        print("[!] Couldn't find an example model. Contact sayon@ieee.org")
-        sys.exit()
+            if make_config_file.lstrip() == "1":
+                config_file_path = input("[?] Please enter the full path to your configuration file:\n")
+                
+            elif make_config_file.lstrip() == "2":
+                build_config_file()
+            else:
+                print("[x] Your input was not valid. Please retry.\n\n")
+                setup()
+    except KeyboardInterrupt:
+        y_or_n = input("[x] It seems you wanted to terminate the project. Are you sure? [Y/N]")
+        if y_or_n.lstrip() == "Y" or y_or_n.lstrip() == "y" or y_or_n.lstrip() == "Yes" or y_or_n.lstrip() == "yes":
+            print("[i] Exiting pyCanvass. Bye.")
+            sys.exit()
 
-    return 0
 
 
 
