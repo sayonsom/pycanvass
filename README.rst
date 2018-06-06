@@ -70,21 +70,19 @@ We try to make this library accessible to non-programmers, programming beginners
 - In your text editor, open a new file and save as "mymodel.py"
 - In mymodel.py, write:
 
-   .. code-block::
+   .. code-block:: python
     
     from pycanvass.all import *
     project, nodes, edges = load_project()
 
 - Now you are ready to perform network Vulnerability analysis. If you want to find the least risk path, i.e. the most resilient path, from a node, say F1_2 in the node-file.csv in the sample to another node, F2_3, just add the following code to your program above:
     
-    .. code-block::
+    .. code-block:: python
 
     paths = path_search(mygraph, 'F1_2', 'F2_3', criterion="least_risk")
     print(paths)
 
-
-
-
+========
 Citation
 ========
 
