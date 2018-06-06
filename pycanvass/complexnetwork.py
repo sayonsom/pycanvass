@@ -509,7 +509,7 @@ def visualize(graph, show=False, save=True):
     values = []
 
     for e in graph.edges():
-        values.append(graph[str(e[0])][str(e[1])][focus]*100)
+        values.append(graph[str(e[0])][str(e[1])][focus])
 
     color_scheme = plt.get_cmap(color_scheme)
     c_norm = colors.Normalize(vmin=0, vmax=7)
@@ -520,6 +520,9 @@ def visualize(graph, show=False, save=True):
     for i in range(len(values)):
         color_val = scalar_map.to_rgba(float(values[i]))
         color_list.append(color_val)
+
+
+    # add a connection to a web visualization
 
     nx.draw_networkx_edges(graph,
                            pos=pos,

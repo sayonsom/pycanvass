@@ -55,6 +55,7 @@ class PairDevices(StreamRequestHandler):
             print("[i] Data Received:")
             for c in range(received_datapoints):
                 print(">> %8.3f" % ar[i])
+                
 
             print("[i] Transmitted Data: ")
 

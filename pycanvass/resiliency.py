@@ -8,6 +8,111 @@ import pprint
 
 pp = pprint.PrettyPrinter(indent=4)
 
+global edge_status_list
+edge_status_list = {}
+
+global edge_switches
+edge_switches = {}
+
+def upstream_edge_info(wg, n):
+    upstream_edges = list(nx.edge_dfs(wg, n, orientation='reverse'))
+    print(upstream_edges)
+    up_switch_dict = {}
+    e_file = gv.filepaths["edges"]
+    for u in upstream_edges:
+        # edge info:
+        p = u[0].lstrip()
+        q = u[1].lstrip()
+        edge_of_path_name_1 = p + "_to_" + q
+        edge_of_path_name_2 = q + "_to_" + p
+        edge_search_result_1 = db._edge_search(edge_of_path_name_1)
+        edge_search_result_2 = db._edge_search(edge_of_path_name_2)
+        try:
+            with open(e_file, 'r+') as f:
+                csvr = csv.reader(f)
+                csvr = list(csvr)
+                for row in csvr:
+                    if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
+                        if edge_search_result_1 != 0 or edge_search_result_2 != 0:
+                            if row[1].lstrip() == "switch":
+                                print("[i] Upstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4], row[13]))
+                                up_switch_dict[row[0]] = row[4]
+                            if row[1].lstrip() == "transformer":
+                                print("[i] Upstream Transformer: {}, Status: {}, Availability: {}".format(row[0], row[4], row[13]))
+                                
+        except:
+            print("[x] Error in up-stream edge search.")
+    return up_switch_dict
+
+def downstream_edge_info(wg, n):
+    downstream_edges = list(nx.dfs_edges(wg, n))
+    down_switch_dict = {}
+    e_file = gv.filepaths["edges"]
+    for d in downstream_edges:
+        # edge info:
+
+        p = d[0].lstrip()
+        q = d[1].lstrip()
+        edge_of_path_name_1 = p + "_to_" + q
+        edge_of_path_name_2 = q + "_to_" + p
+        edge_search_result_1 = db._edge_search(edge_of_path_name_1)
+        edge_search_result_2 = db._edge_search(edge_of_path_name_2)
+        try:
+            with open(e_file, 'r+') as f:
+                csvr = csv.reader(f)
+                csvr = list(csvr)
+                for row in csvr:
+                    if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
+                        if edge_search_result_1 != 0 or edge_search_result_2 != 0:
+                            if row[1].lstrip() == "switch":
+                                print("[i] Downstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4], row[13]))
+                                down_switch_dict[row[0]] = row[4]
+                            if row[1].lstrip() == "transformer":
+                                print("[i] Downstream Transformer: {}, Status: {}, Availability: {}".format(row[0], row[4], row[13]))
+                                
+        except:
+            print("[x] Error in downstream edge search.")
+            
+    return down_switch_dict
+
+def edge_info(edgename):
+    return
+
+
+def reconfigure(from_node, to_node, commit=False, control=False):
+    """
+    Change switch status is upstream and downstream edges.
+    Run power flow to verify. 
+    """
+    g2 = gv.graph_collection[1]
+    edges = g2.edges()
+    wg = nx.DiGraph()  # wg: working graph
+    wg.add_edges_from(edges)
+    down_switch_dict = downstream_edge_info(wg, from_node)
+    up_switch_dict = upstream_edge_info(wg, from_node)
+    print("Down switches from node:")
+    pp.pprint(down_switch_dict)
+    print("Up switches from node:")
+    pp.pprint(up_switch_dict)
+    
+
+    # edge_switches_reconfigured = {}
+    # modified_v = ""
+    # switching_operations = 0
+    # for k, v in edge_switches:
+    #     if v == "0":
+    #         modified_v = "1"
+    #         edge_switches_reconfigured[k] = mv
+    #         switching_operations += 1
+    #         print("[i] Switch {} needs to turned ON.")
+
+    #         # search upstream switches, and turn them off.
+
+    
+
+    
+
+
 def distant_between_two_points(p1, p2):
     """
     Calculate the great circle distance between two points
@@ -126,14 +231,14 @@ def path_search(G, n1, n2, criterion="least_risk"):
     return path
 
 
+
 def load_and_demand_query(path):
     loads = 0
     gens = 0
     demand_kw = 0.0
     gen_kw = 0.0
     e_file = gv.filepaths["edges"]
-    edge_status_list = {}
-    edge_switches = {}
+    
     for p in path:
         n = node_object_from_node_name(p)
         i = path.index(p)
@@ -151,8 +256,9 @@ def load_and_demand_query(path):
                         if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
                             if edge_search_result_1 != 0 or edge_search_result_2 != 0:
                                 edge_status_list[row[0]] = row[4]
-                            if row[1].lstrip == "switch":
-                                edge_switches[row[0]] = row[4]
+                                if row[1].lstrip() == "switch":
+                                    print("[i] Switch {} found!".format(row[0]))
+                                    edge_switches[row[0]] = row[4]
             except:
                 print("[x] Edge could not be queried for status for the nodes.")
                 
