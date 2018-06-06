@@ -82,7 +82,7 @@ We try to make this library accessible to non-programmers, programming beginners
     paths = path_search(mygraph, 'F1_2', 'F2_3', criterion="least_risk")
     print(paths)
 
-========
+
 Citation
 ========
 
