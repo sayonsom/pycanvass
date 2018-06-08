@@ -98,7 +98,7 @@ def reconfigure(from_node, to_node, commit=False, control=False):
         mv = ''
         number_of_down_changes = 0
         number_of_up_changes = 0
-        if v == '1' and number_of_changes == 0:
+        if v == '1' and number_of_down_changes == 0:
             modified_down_switch_dict[k] = mv
 
     print("Up switches from node:")

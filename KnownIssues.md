@@ -25,7 +25,7 @@ This is probably due to the cache of the `egg` file. If you are using Windows an
   C:\Users\<YOUR-USER-NAME>\AppData\Local\Programs\Python\Python36-32\Lib\site-packages
   ```
 
-  and deleting the old egg file in favor of the latest version. Note that the latest version has a higher number at the end of the version number compared to the older version. 
+  and deleting the old pyCanvass egg file in favor of the latest version. Note that the latest version has a higher number at the end of the version number compared to the older version. 
 
 ####  Visualization Error
 

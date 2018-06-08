@@ -6,11 +6,12 @@ import pycanvass.blocks as blocks
 import pycanvass.resiliency as res
 import pycanvass.utilities as util
 import pycanvass.data_visualization as dv
+import random
 import numpy as np
 import os
 import re
 
-def model_summary(file_or_folder_name):
+def import_from_gridlabd(file_or_folder_name):
     """
     This function creates summary of large GridLAB-D files, and optionally helps to create <feeder-name>-node-file.csv and <feeder-name>-edge-file.csv.
     """
@@ -21,32 +22,86 @@ def model_summary(file_or_folder_name):
         file_extension = os.path.splitext(temp)[1]
 
         if file_extension == ".glm":
-
+            print("Modeling Summary 3")
             infile = open(file_or_folder_name, 'r')
             node_output_file_name = filename+"-node-file.csv"
             # edge_output_file_name = filename+"-edge-file.csv"
-            node_outfile = open(node_output_file_name, 'w+')
+            node_outfile = open(node_output_file_name, 'w')
             lines = infile.readlines()
-
+            # print(lines)
+            lineLengthIncrement = 0
             # Write headers of the CSV file here. 
             node_outfile.write("name, phase, lat, long, voltage, load, gen, kind, critical, type, backup_dg, wind_cc, water_cc, seismic_cc, fire_cc, bias\n")
             
             # These are state variables.  There is no error checking, so we rely on
             # well formatted *.GLM files.
             s = 0
-            state = 'start'
-            written_nodes = []
-            # Loop through each line in the input file...
+
             while s < len(lines):
                 # Discard Comments
-                if re.match("//", lines[s]) == None:
-                    if re.search("from", lines[s]) != None:
-                        ts = lines[s].split()
-                        # The following command helps with visualization using GraphViz
-                        ns = ts[1].rstrip(';').replace('-', '_').replace(':', '_')
-                        node_outfile.write(ns)
-                        state = 'after_from'
-            
+                if re.search("//", lines[s]) == None:
+                    if re.search("object node", lines[s]) != None \
+                    or re.search("object triplex_node", lines[s]) != None \
+                    or re.search("object meter", lines[s]) != None \
+                    or re.search("object load", lines[s]) != None \
+                    or re.search("object triplex_meter", lines[s]) != None:
+                        lineLengthIncrement = 0
+                        node_name = ""
+                        kind = ""
+                        phases = ""
+                        voltage = ""
+                        node_type = ""
+                        output_string = ""
+
+                        all_node_types = ["res","biz","wlf","shl","law"]
+
+                        if re.search("object load", lines[s]) != None:
+                            node_type = random.choice(all_node_types)
+                        else:
+                            node_type = "utl"
+
+                        while '}' not in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement += 1
+                            # print("Node line number: {}".format(lineLengthIncrement))
+                            # print(lines[s + lineLengthIncrement])
+                            if re.search("name", lines[s + lineLengthIncrement]) != None:
+                                node_name_string = lines[s + lineLengthIncrement].split()
+                                
+                                # Graphvis format can't handle '-' characters, so they are converted to '_'
+                                node_name = node_name_string[1].rstrip(';').replace('-', '_').replace(':', '_')
+
+                            if re.search("bustype", lines[s + lineLengthIncrement]) != None:
+                                bus_type_string = lines[s + lineLengthIncrement].split()
+                                if bus_type_string[1].rstrip(';').lower() == "swing":
+                                    kind = bus_type_string[1].rstrip(';')
+                                    node_type = "sub"
+                                else:
+                                    kind = "PQ"
+
+                            if re.search("phase", lines[s + lineLengthIncrement]) != None:
+                                phase_type_string = lines[s + lineLengthIncrement].split()
+                                phases = phase_type_string[1].rstrip(';')
+                                phases = phases.strip('\"')
+
+                            if re.search("voltage_A", lines[s + lineLengthIncrement]) != None:
+                                voltage_value = lines[s + lineLengthIncrement].split()
+                                voltage = voltage_value[1].rstrip(";")
+                                
+
+                            if re.search("nominal_voltage", lines[s + lineLengthIncrement]) != None:
+                                voltage_value = lines[s + lineLengthIncrement].split()
+                                voltage = voltage_value[1].rstrip(";")
+                                #lineLengthIncrement = lineLengthIncrement + 1
+                        if '}' in lines[s + lineLengthIncrement]:
+                            output_string = node_name + ", " + phases + ", " + ", " + ", " +voltage + ", " + ", " + kind + ", " + node_type + ", " + ", " + ", " + ", " + ", " + ", " + ", "+"\n"
+                            node_outfile.write(output_string)
+                            s = s + lineLengthIncrement
+                            # lineLengthIncrement = 0
+                            # lengthVal = 'None'
+                            # break
+                
+                s = s + 1
+
             node_outfile.close()
             
 
@@ -57,10 +112,10 @@ def model_summary(file_or_folder_name):
             
     
     elif os.path.isdir(file_or_folder_name):
-        print("[i] Trying to visualize all GLM files in: {}".format(file_or_folder_name))
+        print("[i] Trying to summarize all GridLAB-D Models in: {}".format(file_or_folder_name))
         for f in os.listdir(file_or_folder_name):
             filename = os.path.join(file_or_folder_name, f)
-            print("[i] Processing: {}".format(filename))
+            print("[i] Summarizing: {}".format(filename))
             dv.layout_model(filename)
         
         
@@ -70,8 +125,8 @@ def model_summary(file_or_folder_name):
         print("[i] Please re-check the parameter. If error persists, check the Known Issues document.")
         return
 
-    print("[i] Layout of all GridLAB-D files are complete.")
-    print("[i] SVG files can be viewed in any web browser, and edited using Inkscape.")
+    # print("[i] Layout of all GridLAB-D files are complete.")
+    # print("[i] SVG files can be viewed in any web browser, and edited using Inkscape.")
     
     return
 

@@ -13,6 +13,7 @@ import random
 import logging
 import pycanvass.global_variables as gv
 import sys
+import pycanvass.utilities as util
 import time
 import datetime
 import os
@@ -26,13 +27,14 @@ settings = ""
 
 
 def _input_user_pref_file():
+    util._banner()
     current_folder_path, current_folder_name = os.path.split(os.getcwd())
     default_json_file_name = current_folder_path + "\\user_preferences.json"
     default_json_file_name = Path(default_json_file_name)
 
     if default_json_file_name.exists():
         print("[i] Loaded default user preferences file: {}".format(default_json_file_name))
-        time.sleep(0.5)
+        # time.sleep(0.5)
         user_preference_path = default_json_file_name
     else:
         print("[x] Default user preferences file not found.")
@@ -453,13 +455,6 @@ def resiliency(analysis='nodal'):
 
 
     # 3. track back from that edge to a source, or multiple sources
-
-
-
-
-
-
-
 
 
 # # #
