@@ -28,6 +28,7 @@ setup(name='pycanvass',
           'scapy',
           'pandas',
           'sklearn',
+          'graphviz',
       ],
       extras_require = {
             'test': ['coverage', 'pytest', 'pytest-cov'],

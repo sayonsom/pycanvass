@@ -50,7 +50,7 @@ while attempts < 4:
         settings = json.load(u_settings)
         u_settings.close()
         break
-    except FileNotFoundError:
+    except:
         print("[x] Could not get the user preference file.")
         attempts += 1
         if attempts == 3:

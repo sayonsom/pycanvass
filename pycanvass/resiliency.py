@@ -93,7 +93,13 @@ def reconfigure(from_node, to_node, commit=False, control=False):
     up_switch_dict = upstream_edge_info(wg, from_node)
     print("Down switches from node:")
     pp.pprint(down_switch_dict)
+    
     for k, v in down_switch_dict.items():
+        mv = ''
+        number_of_down_changes = 0
+        number_of_up_changes = 0
+        if v == '1' and number_of_changes == 0:
+            modified_down_switch_dict[k] = mv
 
     print("Up switches from node:")
     pp.pprint(up_switch_dict)

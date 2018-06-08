@@ -4,18 +4,7 @@ from pathlib import Path
 from pycanvass.global_variables import *
 import re
 from pycanvass.blocks import *
-
-def banner(): 
-    print("\n" * 100)
-    print("|----------------------------------------------|")
-    print("| pyCanvass: 0.0.1                             |")
-    print("|----------------------------------------------|")
-    print("| Resiliency computation tool for Smart Grids  |")
-    print("|                                              |")
-    print("| Author: Sayonsom Chanda                      |")
-    print("| License: GNU Public License, v2: 2016-18     |")
-    print("| Support: sayon@ieee.org                      |")
-    print("|----------------------------------------------|")
+from pycanvass.utilities import _banner 
 
 
 def _input_project_config_file():
@@ -63,7 +52,7 @@ def build_config_file():
         
 
 def setup():
-    banner()
+    _banner()
     try:
         if _input_project_config_file() is True:
             return 
@@ -99,6 +88,7 @@ from pycanvass.global_variables import *
 from pycanvass.data_bridge import *
 from pycanvass.complexnetwork import *
 from pycanvass.forecast import *
+from pycanvass.data_visualization import *
 import sys
 import getpass
 

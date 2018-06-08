@@ -4,7 +4,77 @@ import subprocess
 import json
 import pycanvass.blocks as blocks
 import pycanvass.resiliency as res
+import pycanvass.utilities as util
+import pycanvass.data_visualization as dv
 import numpy as np
+import os
+import re
+
+def model_summary(file_or_folder_name):
+    """
+    This function creates summary of large GridLAB-D files, and optionally helps to create <feeder-name>-node-file.csv and <feeder-name>-edge-file.csv.
+    """
+
+    if os.path.isfile(file_or_folder_name):
+        temp = os.path.basename(file_or_folder_name)
+        filename = os.path.splitext(temp)[0]
+        file_extension = os.path.splitext(temp)[1]
+
+        if file_extension == ".glm":
+
+            infile = open(file_or_folder_name, 'r')
+            node_output_file_name = filename+"-node-file.csv"
+            # edge_output_file_name = filename+"-edge-file.csv"
+            node_outfile = open(node_output_file_name, 'w+')
+            lines = infile.readlines()
+
+            # Write headers of the CSV file here. 
+            node_outfile.write("name, phase, lat, long, voltage, load, gen, kind, critical, type, backup_dg, wind_cc, water_cc, seismic_cc, fire_cc, bias\n")
+            
+            # These are state variables.  There is no error checking, so we rely on
+            # well formatted *.GLM files.
+            s = 0
+            state = 'start'
+            written_nodes = []
+            # Loop through each line in the input file...
+            while s < len(lines):
+                # Discard Comments
+                if re.match("//", lines[s]) == None:
+                    if re.search("from", lines[s]) != None:
+                        ts = lines[s].split()
+                        # The following command helps with visualization using GraphViz
+                        ns = ts[1].rstrip(';').replace('-', '_').replace(':', '_')
+                        node_outfile.write(ns)
+                        state = 'after_from'
+            
+            node_outfile.close()
+            
+
+        
+        else:
+            print("[x] {}.{} is not a GridLAB-D File. Not trying to summarize.".format(filename, file_extension))
+            return
+            
+    
+    elif os.path.isdir(file_or_folder_name):
+        print("[i] Trying to visualize all GLM files in: {}".format(file_or_folder_name))
+        for f in os.listdir(file_or_folder_name):
+            filename = os.path.join(file_or_folder_name, f)
+            print("[i] Processing: {}".format(filename))
+            dv.layout_model(filename)
+        
+        
+    
+    else:
+        print("[i] The parameter {} you used inside `layout_model({})` was not found to be either file or a directory.".format(file_or_folder_name, file_or_folder_name))
+        print("[i] Please re-check the parameter. If error persists, check the Known Issues document.")
+        return
+
+    print("[i] Layout of all GridLAB-D files are complete.")
+    print("[i] SVG files can be viewed in any web browser, and edited using Inkscape.")
+    
+    return
+
 
 def write_gld_headers(filename):
     gldfile = open(filename, "w")
@@ -160,7 +230,7 @@ class DistributionSystem:
         try:
             subprocess.check_call(['gridlabd', filename])
         except subprocess.CalledProcessError:
-            print("GridLAB-D Model Compilation Failed.")
+            print("[x] GridLAB-D Model Compilation Failed.")
 
     def import_from_gridlabd(self):
         print("import from gridlab-d")
