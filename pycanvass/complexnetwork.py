@@ -29,6 +29,7 @@ settings = ""
 def _input_user_pref_file():
     util._banner()
     current_folder_path, current_folder_name = os.path.split(os.getcwd())
+    print("[i] Current working folder: {}".format(current_folder_path))
     default_json_file_name = current_folder_path + "\\user_preferences.json"
     default_json_file_name = Path(default_json_file_name)
 
@@ -42,6 +43,7 @@ def _input_user_pref_file():
         
     
     return str(user_preference_path)
+
 
 while attempts < 4:
     if attempts == 3:

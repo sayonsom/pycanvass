@@ -22,21 +22,328 @@ def import_from_gridlabd(file_or_folder_name):
         file_extension = os.path.splitext(temp)[1]
 
         if file_extension == ".glm":
-            print("Modeling Summary 3")
+            print("[i] Importing GridLAB-D Model: {}".format(file_or_folder_name))
             infile = open(file_or_folder_name, 'r')
             node_output_file_name = filename+"-node-file.csv"
+            edge_output_file_name = filename+"-edge-file.csv"
             # edge_output_file_name = filename+"-edge-file.csv"
-            node_outfile = open(node_output_file_name, 'w')
+            
+            edge_outfile = open(edge_output_file_name, 'w+')
             lines = infile.readlines()
             # print(lines)
             lineLengthIncrement = 0
             # Write headers of the CSV file here. 
-            node_outfile.write("name, phase, lat, long, voltage, load, gen, kind, critical, type, backup_dg, wind_cc, water_cc, seismic_cc, fire_cc, bias\n")
             
+            edge_outfile.write("name, kind, from_node, to_node, status, equipment, phases, backup, fire_risk, wind_risk, water_risk, rating, hardening, availability, eq_config_file, known_length, repair_cost, repair_time\n")
             # These are state variables.  There is no error checking, so we rely on
             # well formatted *.GLM files.
             s = 0
 
+            while s < len(lines):
+                if re.search("//", lines[s]) == None: 
+                    if re.search("object overhead_line", lines[s]) != None and re.search("conductor", lines[s]) == None:
+                        from_node = ""
+                        to_node = ""
+                        known_length = ""
+                        edge_kind = ""
+                        equipment = ""
+                        edge_name = ""
+                        edge_phases = ""
+                        equipment = ""
+                        status = "1"
+                        repair_time = ""
+                        while '}' not in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement += 1
+                            edge_kind = "OH_Line"
+                            if re.search("from", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                from_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                            elif re.search("to", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                to_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                            elif re.search("length", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                if len(les) > 2:
+                                    tsVal = les[1] + ' ' + les[2].strip(';')
+                                    known_length = tsVal
+                                elif len(les) <= 2:
+                                    tsVal = les[1].strip(';')
+                                    known_length = tsVal
+                            elif re.search("phases", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                edge_phases = les[1].rstrip(';')
+                                edge_phases = edge_phases.strip('\"')
+                            elif re.search("configuration", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                equipment = les[1].rstrip(';')
+
+
+
+                        if '}' in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement = 0
+                        
+                        edge_name = from_node + "_to_" + to_node
+                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
+                        edge_outfile.write(edge_output_string)
+
+                    elif (re.search("object underground_line", lines[s]) != None):
+                        from_node = ""
+                        to_node = ""
+                        known_length = ""
+                        edge_kind = ""
+                        equipment = ""
+                        edge_name = ""
+                        edge_phases = ""
+                        equipment = ""
+                        status = "1"
+                        repair_time = ""
+                        while '}' not in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement += 1
+                            from_found = False
+                            to_found = False
+                            edge_kind = "UG_Line"
+                            if re.search("from", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                from_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                from_found = True
+                            elif re.search("to", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                to_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                to_found = True
+                                if from_found and to_found:
+                                    edge_name = from_node + "_to_" + to_node
+                            elif re.search("length", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                if len(les) > 2:
+                                    tsVal = les[1] + ' ' + les[2].strip(';')
+                                    known_length = tsVal
+                                elif len(les) <= 2:
+                                    tsVal = les[1].strip(';')
+                                    known_length = tsVal
+                            elif re.search("phases", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                edge_phases = les[1].rstrip(';')
+                                edge_phases = edge_phases.strip('\"')
+                            elif re.search("configuration", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                equipment = les[1].rstrip(';')
+                            elif '}' in lines[s + lineLengthIncrement]:
+                                lineLengthIncrement = 0
+                                known_length = 0
+                                break
+                        
+                        if '}' in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement = 0
+                            
+                        edge_name = from_node + "_to_" + to_node
+                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
+                        edge_outfile.write(edge_output_string)
+                            
+                    elif (re.search("object triplex_line", lines[s]) != None):
+
+                        from_node = ""
+                        to_node = ""
+                        known_length = ""
+                        edge_kind = ""
+                        equipment = ""
+                        edge_name = ""
+                        edge_phases = ""
+                        equipment = ""
+                        status = "1"
+                        repair_time = ""
+                        while '}' not in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement += 1
+                            from_found = False
+                            to_found = False
+                            edge_kind = "dist_Line"
+                            if re.search("from", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                from_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                from_found = True
+                            elif re.search("to", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                to_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                to_found = True
+                                if from_found and to_found:
+                                    edge_name = from_node + "_to_" + to_node
+                            elif re.search("length", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                if len(les) > 2:
+                                    tsVal = les[1] + ' ' + les[2].strip(';')
+                                    known_length = tsVal
+                                elif len(les) <= 2:
+                                    tsVal = les[1].strip(';')
+                                    known_length = tsVal
+                            elif re.search("phases", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                edge_phases = les[1].rstrip(';')
+                                edge_phases = edge_phases.strip('\"')
+                            elif re.search("configuration", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                equipment = les[1].rstrip(';')
+                            elif '}' in lines[s + lineLengthIncrement]:
+                                lineLengthIncrement = 0
+                                known_length = 0
+                                break
+                        if '}' in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement = 0
+                            
+                        edge_name = from_node + "_to_" + to_node
+                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
+                        edge_outfile.write(edge_output_string)
+            
+                    elif (re.search("object transformer", lines[s]) != None):
+                        from_node = ""
+                        to_node = ""
+                        known_length = ""
+                        edge_kind = ""
+                        equipment = ""
+                        edge_name = ""
+                        edge_phases = ""
+                        equipment = ""
+                        status = "1"
+                        repair_time = ""
+                        while '}' not in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement += 1
+                            from_found = False
+                            to_found = False
+                            edge_kind = "transformer"
+                            if re.search("from", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                from_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                from_found = True
+                            elif re.search("to", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                to_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                to_found = True
+                                if from_found and to_found:
+                                    edge_name = from_node + "_to_" + to_node
+                            elif re.search("phases", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                edge_phases = les[1].rstrip(';')
+                                edge_phases = edge_phases.strip('\"')
+                            elif re.search("configuration", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                equipment = les[1].rstrip(';')
+                            elif '}' in lines[s + lineLengthIncrement]:
+                                lineLengthIncrement = 0
+                                break
+                        
+                        if '}' in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement = 0
+                            
+                        edge_name = from_node + "_to_" + to_node
+                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
+                        edge_outfile.write(edge_output_string)
+            
+                    elif (re.search("object fuse", lines[s]) != None):
+                        from_node = ""
+                        to_node = ""
+                        known_length = ""
+                        edge_kind = ""
+                        equipment = ""
+                        edge_name = ""
+                        edge_phases = ""
+                        equipment = ""
+                        status = "1"
+                        repair_time = ""
+                        while '}' not in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement += 1
+                            from_found = False
+                            to_found = False
+                            edge_kind = "fuse"
+                            if re.search("from", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                from_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                from_found = True
+                            elif re.search("to", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                to_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                to_found = True
+                                if from_found and to_found:
+                                    edge_name = from_node + "_to_" + to_node
+                            elif re.search("phases", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                edge_phases = les[1].rstrip(';')
+                                edge_phases = edge_phases.strip('\"')
+                            elif re.search("phase_A_state", lines[s + lineLengthIncrement]) != None \
+                                or re.search("phase_B_state", lines[s + lineLengthIncrement]) != None \
+                                or re.search("phase_C_state", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                status_str = les[1].rstrip(';')
+                                if status_str.lstrip() == "BLOWN":
+                                    status = "0"
+                            elif re.search("mean_replacement_time", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                repair_time = les[1].rstrip(';')
+                            elif '}' in lines[s + lineLengthIncrement]:
+                                lineLengthIncrement = 0
+                                break
+                        if '}' in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement = 0
+                            
+                        edge_name = from_node + "_to_" + to_node
+                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
+                        edge_outfile.write(edge_output_string)
+            
+                    elif (re.search("object switch", lines[s]) != None):
+                        from_node = ""
+                        to_node = ""
+                        known_length = ""
+                        edge_kind = ""
+                        equipment = ""
+                        edge_name = ""
+                        edge_phases = ""
+                        equipment = ""
+                        status = "1"
+                        repair_time = ""
+                        while '}' not in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement += 1
+                            from_found = False
+                            to_found = False
+                            edge_kind = "switch"
+                            if re.search("from", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                from_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                from_found = True
+                            elif re.search("to", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                to_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+                                to_found = True
+                                if from_found and to_found:
+                                    edge_name = from_node + "_to_" + to_node
+                            elif re.search("phases", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                edge_phases = les[1].rstrip(';')
+                                edge_phases = edge_phases.strip('\"')
+                            elif re.search("phase_A_state", lines[s + lineLengthIncrement]) != None \
+                                or re.search("phase_B_state", lines[s + lineLengthIncrement]) != None \
+                                or re.search("phase_C_state", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                status_str = les[1].rstrip(';')
+                                if status_str.lstrip().lower() == "open":
+                                    status = "0"
+                            elif re.search("mean_replacement_time", lines[s + lineLengthIncrement]) != None:
+                                les = lines[s + lineLengthIncrement].split()
+                                repair_time = les[1].rstrip(';')
+                            elif '}' in lines[s + lineLengthIncrement]:
+                                lineLengthIncrement = 0
+                                break
+                        if '}' in lines[s + lineLengthIncrement]:
+                            lineLengthIncrement = 0
+                            
+                        edge_name = from_node + "_to_" + to_node
+                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
+                        edge_outfile.write(edge_output_string)
+                s = s + 1
+            
+            ## BUILD NODE FILE HERE
+            s = 0
+
+            edge_outfile.close()
+
+            node_outfile = open(node_output_file_name, 'w')
+            node_outfile.write("name, phase, lat, long, voltage, load, gen, kind, critical, type, backup_dg, wind_cc, water_cc, seismic_cc, fire_cc, bias\n")
             while s < len(lines):
                 # Discard Comments
                 if re.search("//", lines[s]) == None:
@@ -107,15 +414,15 @@ def import_from_gridlabd(file_or_folder_name):
 
         
         else:
-            print("[x] {}.{} is not a GridLAB-D File. Not trying to summarize.".format(filename, file_extension))
+            print("[x] {}.{} is not a GridLAB-D File. Importing is canceled.".format(filename, file_extension))
             return
             
     
     elif os.path.isdir(file_or_folder_name):
-        print("[i] Trying to summarize all GridLAB-D Models in: {}".format(file_or_folder_name))
+        print("[i] Importing to GridLAB-D Models in: {}".format(file_or_folder_name))
         for f in os.listdir(file_or_folder_name):
             filename = os.path.join(file_or_folder_name, f)
-            print("[i] Summarizing: {}".format(filename))
+            print("[i] Processing: {}".format(filename))
             dv.layout_model(filename)
         
         

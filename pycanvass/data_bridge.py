@@ -6,6 +6,7 @@ import json
 import csv
 import pycanvass.global_variables as gv
 import pycanvass.blocks as blocks
+import pycanvass.utilities as utilities
 from scapy.all import *
 import socket
 import socketserver
@@ -39,25 +40,33 @@ class PairDevices(StreamRequestHandler):
             ar2.append(0.0)
         print(ar2)
 
-        print ('[i] Ready to stream data from {}'.format(self.client_address))
+        # print ('[i] Ready to stream data from {}'.format(self.client_address))
         conn = self.request
+        utilities._data_banner()
+        logfile_name = "canvass_cosim_" + str(self.client_address[0]) +"_" + str(self.client_address[1]) + ".csv"
+        logfile = open(logfile_name,"w+")
         while True:
             msg = conn.recv(1024)
             if not msg:
                 conn.close()
-                print ('[i] Disconnected from {}'.format(self.client_address))
+                print ('[i] Disconnected from IP: {}, Port: {}'.format(self.client_address[0], self.client_address[1]))
                 break
-
-            print("[i] Querying device: {}".format(self.client_address))
+            
+            # print("[i] Querying device: {}".format(self.client_address))
             
             unpacking_string = '>' + "f"*received_datapoints
             ar = unpack(unpacking_string, msg)
-            print("[i] Data Received:")
             for c in range(received_datapoints):
-                print(">> %8.3f" % ar[i])
+                print("|{:<20}|{:<20}|{:<10}|{:>46}|".format(time.time(), "GET" ,self.client_address[0], self.client_address[1], ar[c]))
+                log_string = str(time.time()) + ", " + str(self.client_address[0]) + ", " + str(self.client_address[1]) + ", " + str(ar[c]) + "\n"
+                logfile.write(log_string)
+                response_from_server = pack('>f', ar[c]*2)
+                print("|{:<20}|{:^12}|{:<20}|{:<10}|{:>46}|".format(time.time(), "SEND" ,self.client_address[0], self.client_address[1], ar[c]*2))
+                conn.send(response_from_server)
+                
 
 
-            print("[i] Transmitted Data: ")
+            
 
             
             # if ((ar[4] > 5.0) & (ar[4] < 95.0)):
@@ -70,7 +79,7 @@ class PairDevices(StreamRequestHandler):
             #     msg2 = pack('>fI', 0.0, 1)
 
             # conn.send(msg2)
-            print("\n")
+            #print("\n")
 
     
 
