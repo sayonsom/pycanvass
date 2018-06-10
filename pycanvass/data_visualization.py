@@ -1,13 +1,38 @@
 import numpy as np
+from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 import subprocess
 import sys
 import re
 import os
-from pycanvass.utilities import *
+import pycanvass.utilities as util
 
 
-def layout_model(file_or_folder_name):
+
+def view_on_a_map(filename,**kwargs):
+    """
+    """
+    if kwargs is not None:
+        for key, value in kwargs.iteritems():
+            if key == "location":
+                location = value
+            elif key == "location_latlong":
+                location_latlong = value
+            elif key == "radius":
+                radius = value
+            elif key == "basemap":
+                basemap = value
+    
+
+def _next_geo_coordinate(geo_coord, distance):
+    if distance != None:
+
+
+        
+
+
+
+def layout_model(file_or_folder_name, map_random = False):
     """
     
     """

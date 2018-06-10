@@ -30,6 +30,7 @@ setup(name='pycanvass',
           'sklearn',
           'graphviz',
           'progressbar2',
+          'reverse_geocoder',
       ],
       extras_require = {
             'test': ['coverage', 'pytest', 'pytest-cov'],
