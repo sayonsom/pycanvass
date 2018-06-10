@@ -7,18 +7,21 @@ All the quick utility functions, frequently called in other libraries
 
 _version = "0.0.2.10"
 
+
+
+
 def _data_banner():
     """
     Displays just before stream data is shown on the node screen.
     """
-    print("|=============================================================================================================|")
-    print("| CANVASS Co-Sim Module 0.0.1                                                                                 |")
-    print("|-------------------------------------------------------------------------------------------------------------|")
+    print("|=========================================================================================================|")
+    print("| CANVASS Co-Sim Module 0.0.1                                                                             |")
+    print("|---------------------------------------------------------------------------------------------------------|")
     print("| Starting Time: {} seconds, since Jan 1, 1970.".format(time.time()))
-    print("| Questions? Ask: Sayonsom Chanda, Email: sayon@ieee.org                                                      |")
-    print("|====================|============|====================|==========|==============================================|")
-    print("|TIME STAMP          | Direction  | DEVICE IP          | PORT     | DATA RECEIVED                                |")
-    print("|====================|============|====================|==========|==============================================|") 
+    print("| Questions? Ask: Sayonsom Chanda, Email: sayon@ieee.org                                                  |")
+    print("|====================|============|====================|==========|=======================================|")
+    print("|TIME STAMP          | Direction  | DEVICE IP          | PORT     | DATA RECEIVED                         |")
+    print("|====================|============|====================|==========|=======================================|")
 
 def _hide_terminal_output():
     """

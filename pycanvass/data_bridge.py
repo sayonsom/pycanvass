@@ -61,7 +61,7 @@ class PairDevices(StreamRequestHandler):
                 log_string = str(time.time()) + ", " + str(self.client_address[0]) + ", " + str(self.client_address[1]) + ", " + str(ar[c]) + "\n"
                 logfile.write(log_string)
                 response_from_server = pack('>f', ar[c]*2)
-                print("|{:<20}|{:^12}|{:<20}|{:<10}|{:>46}|".format(time.time(), "SEND" ,self.client_address[0], self.client_address[1], ar[c]*2))
+                print("|{:<20}|{:^12}|{:<20}|{:<10}|{:>39}|".format(time.time(), "SEND" ,self.client_address[0], self.client_address[1], ar[c]*2))
                 conn.send(response_from_server)
                 
 

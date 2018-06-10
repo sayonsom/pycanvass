@@ -1,16 +1,20 @@
 import numpy as np
-from mpl_toolkits.basemap import Basemap
-import matplotlib.pyplot as plt
+# from mpl_toolkits.basemap import Basemap
+# import matplotlib.pyplot as plt
 import subprocess
 import sys
 import re
 import os
 import pycanvass.utilities as util
-
+import random
 
 
 def view_on_a_map(filename,**kwargs):
     """
+    Plots a feeder file on a map
+    :param filename:
+    :param kwargs:
+    :return:
     """
     if kwargs is not None:
         for key, value in kwargs.iteritems():
@@ -22,14 +26,31 @@ def view_on_a_map(filename,**kwargs):
                 radius = value
             elif key == "basemap":
                 basemap = value
-    
+
 
 def _next_geo_coordinate(geo_coord, distance):
-    if distance != None:
+    """
+    Calculates the next geo-coordinate.
+    If we know one geo-coordinate and how far the coordinate is supposed to be, we can make a random guess about the next co-ordinate point.
+    :param geo_coord: tuple containing [lat, long]
+    :param distance: in feet.
+    :return: next_geo_coord tuple containing [lat, long]
 
+    Note:
+    - 1 deg latitude = 111.32 km
+    - 1 ft = 0.0003048 km
+    - 1 ft = 2.7380524e-6 deg latitude shift
 
-        
+    """
+    theta = random.randrange(0, 359)
 
+    if distance != "None":
+        horizontal_shift = float(distance) * np.cos(theta)
+        vertical_shift = float(distance) * np.sin(theta)
+        next_lat = geo_coord[0] + 2.7380524e-6 * vertical_shift
+        next_long = geo_coord[1] + horizontal_shift/np.cos(next_lat * (np.pi/180))
+
+        return [next_lat, next_long]
 
 
 def layout_model(file_or_folder_name, map_random = False):
@@ -97,10 +118,10 @@ def layout_model(file_or_folder_name, map_random = False):
                         state = 'start'
                         edge_color = 'black'
                         edge_style = 'solid'
-                    elif (re.search("object underground_line", lines[s]) != None) or (
-                        re.search("object overhead_line", lines[s]) != None):
+                    elif (re.search("object underground_line", lines[s]) is not None) or (
+                        re.search("object overhead_line", lines[s]) is not None):
                         while '}' not in lines[s + lineLengthIncrement]:
-                            if re.search("length ", lines[s + lineLengthIncrement]) != None:
+                            if re.search("length ", lines[s + lineLengthIncrement]) is not None:
                                 les = lines[s + lineLengthIncrement].split()
                                 if len(les) > 2:
                                     tsVal = les[1] + ' ' + les[2].strip(';')
@@ -115,15 +136,15 @@ def layout_model(file_or_folder_name, map_random = False):
                                 lineLengthIncrement = 0
                                 lengthVal = 'None'
                                 break
-                        if re.search("object underground_line", lines[s]) != None:
+                        if re.search("object underground_line", lines[s]) is not None:
                             lengthVal = "UG_line\\n" + lengthVal
-                        elif re.search("object overhead_line", lines[s]) != None:
+                        elif re.search("object overhead_line", lines[s]) is not None:
                             lengthVal = "OH_line\\n" + lengthVal
-                    elif re.search("object transformer", lines[s]) != None:
+                    elif re.search("object transformer", lines[s]) is not None:
                         edge_color = 'red'
                         lengthVal = "transformer\\n" + lengthVal
                         outfile.write("node [shape=oval]\n")
-                    elif re.search("object triplex_line", lines[s]) != None:
+                    elif re.search("object triplex_line", lines[s]) is not None:
                         edge_color = 'green'
                         lengthVal = "triplex_line\\n" + lengthVal
                     elif re.search("object fuse", lines[s]) != None:

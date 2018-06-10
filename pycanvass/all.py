@@ -4,12 +4,19 @@ from pathlib import Path
 from pycanvass.global_variables import *
 import re
 from pycanvass.blocks import *
-from pycanvass.utilities import _banner 
-
+from pycanvass.utilities import _banner
+from pycanvass.distributionsystem import *
+from pycanvass.resiliency import *
+from pycanvass.global_variables import *
+from pycanvass.data_bridge import *
+from pycanvass.complexnetwork import *
+from pycanvass.forecast import *
+from pycanvass.data_visualization import *
+import getpass
 
 def _input_project_config_file():
     current_folder_path, current_folder_name = os.path.split(os.getcwd())
-    default_json_file_name = current_folder_path + "\\project_config.json"
+    default_json_file_name = current_folder_path + "\\" + current_folder_name + "\\project_config.json"
     default_json_file_name = Path(default_json_file_name)
 
     if default_json_file_name.exists():
@@ -82,14 +89,6 @@ def setup():
 setup()
 
 
-from pycanvass.distributionsystem import *
-from pycanvass.resiliency import *
-from pycanvass.global_variables import *
-from pycanvass.data_bridge import *
-from pycanvass.complexnetwork import *
-from pycanvass.forecast import *
-from pycanvass.data_visualization import *
-import sys
-import getpass
 
-config_file = ""
+
+
