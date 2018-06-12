@@ -10,7 +10,7 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 import json
 import random
-import logging
+from pycanvass.all import *
 import pycanvass.global_variables as gv
 import sys
 import pycanvass.utilities as util
@@ -65,12 +65,7 @@ while attempts < 4:
             print("[i] One more chance to get the user preference correctly setup.")
 
 
-# Setup logging controls here
-# ---------------------------
-log_level = settings["event_log"]
-log_level = log_level.upper()
-logging.basicConfig(format='%(asctime)s : %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',
-                    filename='canvass_events.log', filemode='w', level=logging.DEBUG)
+
 
 
 # ---------------------------
@@ -246,6 +241,76 @@ def feeder_path(graph, from_node, to_node):
 # # #
 # L #
 # # #
+
+def lat_long_layout(graph, show=False, save=True):
+    """
+    Help visualize the network graph and some of its resilience properties.
+    If your graph does not come with
+    :param graph:
+    :param show: (Default is False)
+    :param save: (Default is True)
+    :return:
+    """
+    focus = "impact_on_edge"
+    logging.info("Lat_long_layout function used, focus = {}, trying to display = {}, saving = {}".format(focus, show, save))
+
+    try:
+        pos, label_pos = _create_pos_dictionary(graph)
+    except ValueError:
+        print("[x] Error: Could not create determine where to put the nodes and edges. "
+              "... Please check the lat, longs of your nodes. "
+              ""
+              "... In case your file does not have the lat, longs, generate"
+              "... random lat-longs by using the layout_model(<model.glm>, map_random=True) function."
+              ""
+              "... Please read the documentation on how to do that. ")
+
+        logging.error('Could not create the dictionary for pos, or label_pos')
+
+    color_scheme = settings['visualization']['color_scheme']
+
+    values = []
+
+    for e in graph.edges():
+        values.append(graph[str(e[0])][str(e[1])][focus])
+
+    color_scheme = plt.get_cmap(color_scheme)
+    c_norm = colors.Normalize(vmin=0, vmax=7)
+    scalar_map = cmx.ScalarMappable(norm=c_norm, cmap=color_scheme)
+    color_list = []
+    edge_labels = nx.get_edge_attributes(graph, focus)
+
+    for i in range(len(values)):
+        color_val = scalar_map.to_rgba(float(values[i]))
+        color_list.append(color_val)
+
+    # add a connection to a web visualization
+
+    nx.draw_networkx_edges(graph,
+                           pos=pos,
+                           edge_color=color_list,
+                           # style='dashed',
+                           width=2.0)
+
+    nx.draw_networkx_nodes(graph,
+                           pos=pos,
+                           nodelist=graph.nodes(),
+                           node_color='b',
+                           node_shape='x')
+
+    nx.draw_networkx_labels(graph,
+                            pos=label_pos,
+                            edge_labels=edge_labels)
+
+    if show == True:
+        plt.show()
+
+    if save:
+        ts = time.time()
+        st = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H_%M_%S')
+        filename = "visualization_" + st + ".png"
+        plt.savefig(filename)
+
 
 def loads(critical=False):
     """
@@ -500,64 +565,3 @@ def summary(graph):
 # V #
 # # #
 
-def visualize(graph, show=False, save=True):
-    """
-    Help visualize the network graph and some of its resilience properties
-    :param graph:
-    :param show: (Default is False)
-    :param save: (Default is True)
-    :return:
-    """
-    focus = "impact_on_edge"
-    logging.info("Visualization function invoked")
-
-    try:
-        pos, label_pos = _create_pos_dictionary(graph)
-    except ValueError:
-        print("Error: Could not create determine where to put the nodes and edges. "
-              "Please check the lat, longs of your nodes.")
-        logging.error("Could not create the dictionary for pos, or label_pos")
-    color_scheme = settings['visualization']['color_scheme']
-
-    values = []
-
-    for e in graph.edges():
-        values.append(graph[str(e[0])][str(e[1])][focus])
-
-    color_scheme = plt.get_cmap(color_scheme)
-    c_norm = colors.Normalize(vmin=0, vmax=7)
-    scalar_map = cmx.ScalarMappable(norm=c_norm, cmap=color_scheme)
-    color_list = []
-    edge_labels = nx.get_edge_attributes(graph, focus)
-
-    for i in range(len(values)):
-        color_val = scalar_map.to_rgba(float(values[i]))
-        color_list.append(color_val)
-
-
-    # add a connection to a web visualization
-
-    nx.draw_networkx_edges(graph,
-                           pos=pos,
-                           edge_color=color_list,
-                           # style='dashed',
-                           width=2.0)
-
-    nx.draw_networkx_nodes(graph,
-                           pos=pos,
-                           nodelist=graph.nodes(),
-                           node_color='b',
-                           node_shape='x')
-
-    nx.draw_networkx_labels(graph,
-                            pos=label_pos,
-                            edge_labels=edge_labels)
-    
-    if show==True:
-        plt.show()
-
-    if save:
-        ts = time.time()
-        st = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H_%M_%S')
-        filename = "visualization_" + st + ".png"
-        plt.savefig(filename)

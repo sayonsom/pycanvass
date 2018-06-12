@@ -5,6 +5,8 @@ import random
 import numpy as np
 import pycanvass.data_bridge as db
 import pprint
+import logging
+import sys
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -13,6 +15,7 @@ edge_status_list = {}
 
 global edge_switches
 edge_switches = {}
+
 
 def upstream_edge_info(wg, n):
     upstream_edges = list(nx.edge_dfs(wg, n, orientation='reverse'))
@@ -35,14 +38,18 @@ def upstream_edge_info(wg, n):
                     if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
                         if edge_search_result_1 != 0 or edge_search_result_2 != 0:
                             if row[1].lstrip() == "switch":
-                                print("[i] Upstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4], row[13]))
+                                print("[i] Upstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4],
+                                                                                                     row[13]))
                                 up_switch_dict[row[0]] = row[4]
                             if row[1].lstrip() == "transformer":
-                                print("[i] Upstream Transformer: {}, Status: {}, Availability: {}".format(row[0], row[4], row[13]))
-                                
+                                print(
+                                    "[i] Upstream Transformer: {}, Status: {}, Availability: {}".format(row[0], row[4],
+                                                                                                        row[13]))
+
         except:
             print("[x] Error in up-stream edge search.")
     return up_switch_dict
+
 
 def downstream_edge_info(wg, n):
     downstream_edges = list(nx.dfs_edges(wg, n))
@@ -50,7 +57,6 @@ def downstream_edge_info(wg, n):
     e_file = gv.filepaths["edges"]
     for d in downstream_edges:
         # edge info:
-
         p = d[0].lstrip()
         q = d[1].lstrip()
         edge_of_path_name_1 = p + "_to_" + q
@@ -65,35 +71,62 @@ def downstream_edge_info(wg, n):
                     if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
                         if edge_search_result_1 != 0 or edge_search_result_2 != 0:
                             if row[1].lstrip() == "switch":
-                                print("[i] Downstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4], row[13]))
+                                print("[i] Downstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4],
+                                                                                                       row[13]))
                                 down_switch_dict[row[0]] = row[4]
                             if row[1].lstrip() == "transformer":
-                                print("[i] Downstream Transformer: {}, Status: {}, Availability: {}".format(row[0], row[4], row[13]))
-                                
+                                print("[i] Downstream Transformer: {}, Status: {}, Availability: {}".format(row[0],
+                                                                                                            row[4],
+                                                                                                            row[13]))
+
         except:
             print("[x] Error in downstream edge search.")
-            
+
     return down_switch_dict
+
 
 def edge_info(edgename):
     return
 
 
+
+def restore():
+    """
+    Algorithm:
+    Damaged graph.
+    Path search in complete graph.
+    :return:
+    """
+
+
+
 def reconfigure(from_node, to_node, commit=False, control=False):
     """
     Change switch status is upstream and downstream edges.
-    Run power flow to verify. 
+    Run power flow to verify.
+
+    Modeling Convention:
+    If you are connecting it to a real-time device, such as RTDS, please remember that all switches are sorted
+    alphabetically.
+
     """
     g2 = gv.graph_collection[1]
     edges = g2.edges()
     wg = nx.DiGraph()  # wg: working graph
     wg.add_edges_from(edges)
-    down_switch_dict = downstream_edge_info(wg, from_node)
+    try:
+        down_switch_dict = downstream_edge_info(wg, from_node)
+    except Exception as e:
+        if KeyError:
+            logging.info("From node was not found in the node file. May be a spelling error.")
+            print("[x] 'From Node' was not correctly spelled when the 'reconfigure' function was called.")
+            sys.exit()
+
     modified_down_switch_dict = {}
     up_switch_dict = upstream_edge_info(wg, from_node)
     print("Down switches from node:")
     pp.pprint(down_switch_dict)
-    
+
     for k, v in down_switch_dict.items():
         mv = ''
         number_of_down_changes = 0
@@ -103,7 +136,6 @@ def reconfigure(from_node, to_node, commit=False, control=False):
 
     print("Up switches from node:")
     pp.pprint(up_switch_dict)
-    
 
     # edge_switches_reconfigured = {}
     # modified_v = ""
@@ -116,10 +148,6 @@ def reconfigure(from_node, to_node, commit=False, control=False):
     #         print("[i] Switch {} needs to turned ON.")
 
     #         # search upstream switches, and turn them off.
-
-    
-
-    
 
 
 def distant_between_two_points(p1, p2):
@@ -157,15 +185,15 @@ def primary_threat_anchor_of_node(node, ignore_multiple_threats_within="100"):
 
     most_destructive_threat_anchor = ""
     strength = 1
-    tmp_var = 100000                # <- any very large value
-    proximal_threat_anchors = []    # <- todo: superposition impact of other threat nodes
+    tmp_var = 100000  # <- any very large value
+    proximal_threat_anchors = []  # <- todo: superposition impact of other threat nodes
 
     for k, value in gv.threat_dict.items():
         "calculate distance between each threat node. "
-        "Complexity: O(N^2)"        # <- todo: improve the runtime complexity
+        "Complexity: O(N^2)"  # <- todo: improve the runtime complexity
 
         distance = distant_between_two_points(tuple((float(value.lat), float(value.long))),
-                                       tuple((float(node.lat), float(node.long))))
+                                              tuple((float(node.lat), float(node.long))))
 
         if tmp_var > distance:
             most_destructive_threat_anchor = value.anchor
@@ -195,9 +223,9 @@ def impact_on_node(node_name):
     impact = (strength of event/distance from threat node)*risk of the node
     :return:
     """
-    node_name=node_name.lstrip()
+    node_name = node_name.lstrip()
     node = node_object_from_node_name(node_name)
-    
+
     threat_anchor = primary_threat_anchor_of_node(node)
 
     print('Calculating impact of threat labeled %s on node %s' % (threat_anchor["name"], node.name))
@@ -223,7 +251,7 @@ def impact_on_node(node_name):
     else:
         risk = gv.node_utl[node.name]
 
-    return (float(threat_anchor["strength"])/float(threat_anchor["distance"]))*risk
+    return (float(threat_anchor["strength"]) / float(threat_anchor["distance"])) * risk
 
 
 def path_search(G, n1, n2, criterion="least_risk"):
@@ -234,11 +262,10 @@ def path_search(G, n1, n2, criterion="least_risk"):
     :param n2: sink node in a graph object
     :return: path:
     """
-    if criterion=="least_risk":
+    if criterion == "least_risk":
         path = nx.dijkstra_path(G, n1, n2, 'impact_on_edge')
     load_and_demand_query(path)
     return path
-
 
 
 def load_and_demand_query(path):
@@ -247,12 +274,12 @@ def load_and_demand_query(path):
     demand_kw = 0.0
     gen_kw = 0.0
     e_file = gv.filepaths["edges"]
-    
+
     for p in path:
         n = node_object_from_node_name(p)
         i = path.index(p)
-        if i < len(path)-1:
-            q = path[i+1]
+        if i < len(path) - 1:
+            q = path[i + 1]
             edge_of_path_name_1 = p + "_to_" + q
             edge_of_path_name_2 = q + "_to_" + p
             edge_search_result_1 = db._edge_search(edge_of_path_name_1)
@@ -270,26 +297,24 @@ def load_and_demand_query(path):
                                     edge_switches[row[0]] = row[4]
             except:
                 print("[x] Edge could not be queried for status for the nodes.")
-                
+
         if int(n.load) > 0:
             loads += 1
             demand_kw += float(n.load)
         if n.gen.lstrip() != "inf":
             gen_kw += float(n.gen)
 
-
     print("[i] Number of loads = {}, Demand = {} kW, Generation = {} kW".format(loads, demand_kw, gen_kw))
     print("[i] Edge Statuses of the path:")
     pp.pprint(edge_status_list)
-    
+
     print("[i] Switch Status:")
     pp.pprint(edge_switches)
     load_and_demand_query_dict = {}
     load_and_demand_query_dict["edge_status"] = edge_status_list
     load_and_demand_query_dict["switch_status"] = edge_switches
-    
-    return load_and_demand_query_dict
 
+    return load_and_demand_query_dict
 
 
 def adjusted_node_risk(node_risk, adjustment_factor):
@@ -298,7 +323,7 @@ def adjusted_node_risk(node_risk, adjustment_factor):
     :param new_information:
     :return:
     """
-    return node_risk*adjustment_factor
+    return node_risk * adjustment_factor
 
 
 def node_threat(n_risk, cta, threat_type="Generic", threat_horizon="day", threat_credibility="1"):
@@ -348,8 +373,8 @@ def event_intensity():
     """
     event_intensity_number = gv.project["event"]["known_intensity"]
     if gv.project["event"]["type"] == "hurricane":
-        event_intensity_number = event_intensity_number*2       # because worst hurricane value is 5
-    return event_intensity_number                               # on a scale of 1 to 10, like earthquake scale.
+        event_intensity_number = event_intensity_number * 2  # because worst hurricane value is 5
+    return event_intensity_number  # on a scale of 1 to 10, like earthquake scale.
 
 
 def edge_object_from_edge_name(e_name):
@@ -369,10 +394,10 @@ def impact_on_edge(e):
     :param e: Key of edge dictionary for global edge risk dictionary
     :return:
     """
-    edge_name = e #e[1].lstrip() + "_to_" + e[0].lstrip()
+    edge_name = e  # e[1].lstrip() + "_to_" + e[0].lstrip()
     edge = edge_object_from_edge_name(edge_name)
-    elemental_risk = (float(edge.wind_risk) + float(edge.fire_risk) + float(edge.water_risk))/30.0
-    foliage_risk = 1.0            # <-- todo: need to implement the foliage risk factor
+    elemental_risk = (float(edge.wind_risk) + float(edge.fire_risk) + float(edge.water_risk)) / 30.0
+    foliage_risk = 1.0  # <-- todo: need to implement the foliage risk factor
     # where's the closest threat node?
     e_file = gv.filepaths["edges"]
     edge_search_result = db._edge_search(edge_name)
@@ -390,13 +415,13 @@ def impact_on_edge(e):
         print("[x] Cannot find the requested edge.\n[i] Calculating impact on substation PCC instead.")
         from_node_of_e = "S1"
         to_node_of_e = "F1_1"
-        return 
+        return
 
     ev_intensity = float(event_intensity())
     # primary_threat_anchor = primary_threat_anchor_of_node(from_node_of_e)
     risk_of_from_node = impact_on_node(from_node_of_e)
     risk_of_to_node = impact_on_node(to_node_of_e)
-    x = (foliage_risk*ev_intensity*max(risk_of_from_node, risk_of_to_node))/hardening
+    x = (foliage_risk * ev_intensity * max(risk_of_from_node, risk_of_to_node)) / hardening
     return x
 
 
@@ -483,7 +508,6 @@ def resiliency_downstream(graph, edgelist, event):
 
     # loads encountered
 
-
     # critical loads encountered
 
     # generators encountered
@@ -511,8 +535,6 @@ def weigh_the_sections(graph, attr_name="impact_on_edge"):
         x = impact_on_edge(edge_name)
         graph[e[0]][e[1]][attr_name] = x
         # print("[i] Weighing {} by anticipated event impact {}".format(edge_name, x))
-
-
 
 
 def resiliency(analysis='nodal'):
@@ -551,4 +573,3 @@ def resiliency(analysis='nodal'):
         resiliency_upstream(g2, upstream_edges, event)
 
     # 3. track back from that edge to a source, or multiple sources
-

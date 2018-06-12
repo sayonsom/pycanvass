@@ -3,6 +3,7 @@ import pycanvass.global_variables as gv
 import subprocess
 import json
 import pycanvass.blocks as blocks
+from pycanvass.all import *
 import pycanvass.resiliency as res
 import pycanvass.utilities as util
 import pycanvass.data_visualization as dv
@@ -11,9 +12,11 @@ import numpy as np
 import os
 import re
 
-def import_from_gridlabd(file_or_folder_name):
+
+def import_from_gridlabd(file_or_folder_name, map_random=False):
     """
-    This function creates summary of large GridLAB-D files, and optionally helps to create <feeder-name>-node-file.csv and <feeder-name>-edge-file.csv.
+    This function creates summary of large GridLAB-D files, and optionally helps to create
+    <feeder-name>-node-file.csv and <feeder-name>-edge-file.csv.
     """
 
     if os.path.isfile(file_or_folder_name):
@@ -26,18 +29,24 @@ def import_from_gridlabd(file_or_folder_name):
             infile = open(file_or_folder_name, 'r')
             node_output_file_name = filename+"-node-file.csv"
             edge_output_file_name = filename+"-edge-file.csv"
-            # edge_output_file_name = filename+"-edge-file.csv"
+
             
             edge_outfile = open(edge_output_file_name, 'w+')
             lines = infile.readlines()
             # print(lines)
             lineLengthIncrement = 0
-            # Write headers of the CSV file here. 
-            
+
+            # Write headers of the CSV file here.
             edge_outfile.write("name, kind, from_node, to_node, status, equipment, phases, backup, fire_risk, wind_risk, water_risk, rating, hardening, availability, eq_config_file, known_length, repair_cost, repair_time\n")
             # These are state variables.  There is no error checking, so we rely on
             # well formatted *.GLM files.
             s = 0
+            # written_nodes = []
+            # last_node_traversed = []
+            # if map_random is True:
+            #     node_latlong_file_name = filename + "-node-latlong-file.csv"
+            #     node_latlong_outfile = open(node_latlong_file_name, 'w+')
+
 
             while s < len(lines):
                 if re.search("//", lines[s]) == None: 
@@ -58,6 +67,8 @@ def import_from_gridlabd(file_or_folder_name):
                             if re.search("from", lines[s + lineLengthIncrement]) != None:
                                 les = lines[s + lineLengthIncrement].split()
                                 from_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
+
+
                             elif re.search("to", lines[s + lineLengthIncrement]) != None:
                                 les = lines[s + lineLengthIncrement].split()
                                 to_node = les[1].rstrip(';').replace('-', '_').replace(':', '_')
@@ -86,7 +97,7 @@ def import_from_gridlabd(file_or_folder_name):
                         edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
                         edge_outfile.write(edge_output_string)
 
-                    elif (re.search("object underground_line", lines[s]) != None):
+                    elif re.search("object underground_line", lines[s]) is not None and re.search("conductor", lines[s]) is None:
                         from_node = ""
                         to_node = ""
                         known_length = ""
@@ -136,7 +147,7 @@ def import_from_gridlabd(file_or_folder_name):
                             lineLengthIncrement = 0
                             
                         edge_name = from_node + "_to_" + to_node
-                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
+                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + str(known_length) + ", , \n"
                         edge_outfile.write(edge_output_string)
                             
                     elif (re.search("object triplex_line", lines[s]) != None):
@@ -192,7 +203,7 @@ def import_from_gridlabd(file_or_folder_name):
                         edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
                         edge_outfile.write(edge_output_string)
             
-                    elif (re.search("object transformer", lines[s]) != None):
+                    elif (re.search("object transformer", lines[s]) is not None) and re.search("configuration", lines[s]) is None:
                         from_node = ""
                         to_node = ""
                         known_length = ""
@@ -333,7 +344,9 @@ def import_from_gridlabd(file_or_folder_name):
                             lineLengthIncrement = 0
                             
                         edge_name = from_node + "_to_" + to_node
-                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " + known_length + ", , \n"
+                        edge_output_string = edge_name + ", " + edge_kind + ", " + from_node + ", " + to_node + ", " \
+                                             + status + ", " + equipment + ", " + edge_phases + ", , , , , , , , , " \
+                                             + known_length + ", , \n"
                         edge_outfile.write(edge_output_string)
                 s = s + 1
             
@@ -343,15 +356,17 @@ def import_from_gridlabd(file_or_folder_name):
             edge_outfile.close()
 
             node_outfile = open(node_output_file_name, 'w')
-            node_outfile.write("name, phase, lat, long, voltage, load, gen, kind, critical, type, backup_dg, wind_cc, water_cc, seismic_cc, fire_cc, bias\n")
+            node_outfile.write("name, phase, lat, long, voltage, load, gen, kind, critical, type, backup_dg, wind_cc, "
+                               "water_cc, seismic_cc, fire_cc, bias\n")
+
             while s < len(lines):
                 # Discard Comments
                 if re.search("//", lines[s]) == None:
-                    if re.search("object node", lines[s]) != None \
-                    or re.search("object triplex_node", lines[s]) != None \
-                    or re.search("object meter", lines[s]) != None \
-                    or re.search("object load", lines[s]) != None \
-                    or re.search("object triplex_meter", lines[s]) != None:
+                    if re.search("object node", lines[s]) is not None \
+                    or re.search("object triplex_node", lines[s]) is not None \
+                    or re.search("object meter", lines[s]) is not None \
+                    or re.search("object load", lines[s]) is not None \
+                    or re.search("object triplex_meter", lines[s]) is not None:
                         lineLengthIncrement = 0
                         node_name = ""
                         kind = ""
@@ -385,20 +400,20 @@ def import_from_gridlabd(file_or_folder_name):
                                 else:
                                     kind = "PQ"
 
-                            if re.search("phase", lines[s + lineLengthIncrement]) != None:
+                            if re.search("phase", lines[s + lineLengthIncrement]) is not None:
                                 phase_type_string = lines[s + lineLengthIncrement].split()
                                 phases = phase_type_string[1].rstrip(';')
                                 phases = phases.strip('\"')
 
-                            if re.search("voltage_A", lines[s + lineLengthIncrement]) != None:
+                            if re.search("voltage_A", lines[s + lineLengthIncrement]) is not None \
+                                    and re.search("measured", lines[s + lineLengthIncrement]) is None:
                                 voltage_value = lines[s + lineLengthIncrement].split()
                                 voltage = voltage_value[1].rstrip(";")
-                                
 
-                            if re.search("nominal_voltage", lines[s + lineLengthIncrement]) != None:
+                            if re.search("nominal_voltage", lines[s + lineLengthIncrement]) is not None:
                                 voltage_value = lines[s + lineLengthIncrement].split()
                                 voltage = voltage_value[1].rstrip(";")
-                                #lineLengthIncrement = lineLengthIncrement + 1
+                                # lineLengthIncrement = lineLengthIncrement + 1
                         if '}' in lines[s + lineLengthIncrement]:
                             output_string = node_name + ", " + phases + ", " + ", " + ", " +voltage + ", " + ", " + kind + ", " + node_type + ", " + ", " + ", " + ", " + ", " + ", " + ", "+"\n"
                             node_outfile.write(output_string)
@@ -432,7 +447,8 @@ def import_from_gridlabd(file_or_folder_name):
         print("[i] Please re-check the parameter. If error persists, check the Known Issues document.")
         return
 
-    # print("[i] Layout of all GridLAB-D files are complete.")
+    print("[i] Import of all GridLAB-D files are complete.")
+    logging.info("Import of all GridLAB-D files are complete.")
     # print("[i] SVG files can be viewed in any web browser, and edited using Inkscape.")
     
     return

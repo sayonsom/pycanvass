@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import inspect
 import time
 from collections import defaultdict
 import json
@@ -65,10 +66,6 @@ class PairDevices(StreamRequestHandler):
                 conn.send(response_from_server)
                 
 
-
-            
-
-            
             # if ((ar[4] > 5.0) & (ar[4] < 95.0)):
             #     msg2 = pack('>fI', (ar[2] - ar[3]), 1)  # Pin is negative
             # elif (ar[4] < 5.0):
@@ -223,7 +220,6 @@ def _print_data_packet(packet):
 
 def connect_and_control(device, ip_addr, port, polling_interval=1):
     """
-
     :return:
     """
     server_address = (ip_addr, int(port))
@@ -269,7 +265,9 @@ def _edge_search(e):
                 return counter - 1
 
         if match_flag == 0:
-            print("[x] Edge could not be found.")
+            called_from = inspect.stack()[1]
+            called_module = inspect.getmodule(called_from[0])
+            logging.error("[x] Called from - {} : Edge {} could not be found.".format(called_module, e))
             return 0
 
 

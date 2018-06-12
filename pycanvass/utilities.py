@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import time
+import pandas as pd
 """
 All the quick utility functions, frequently called in other libraries
 """
@@ -8,7 +9,11 @@ All the quick utility functions, frequently called in other libraries
 _version = "0.0.2.10"
 
 
-
+def _merge_and_align_columns(file_a, file_b):
+    df_main = pd.read_csv(file_a)
+    print(df_main.loc['lat'])
+    df_short = pd.read_csv(file_b)
+    return 0
 
 def _data_banner():
     """
@@ -54,7 +59,7 @@ def _update_progress(progress):
 def _banner(): 
     print("\n" * 100)
     print("|----------------------------------------------|")
-    print("| pyCanvass: {}                           |".format(_version))
+    print("| pyCanvass: {}                          |".format(_version))
     print("|----------------------------------------------|")
     print("| Resiliency computation tool for Smart Grids  |")
     print("|                                              |")

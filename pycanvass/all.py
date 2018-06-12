@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import logging
 from pycanvass.global_variables import *
 import re
 from pycanvass.blocks import *
@@ -13,6 +14,14 @@ from pycanvass.complexnetwork import *
 from pycanvass.forecast import *
 from pycanvass.data_visualization import *
 import getpass
+
+
+# Setup logging controls here
+# ---------------------------
+log_level = settings["event_log"]
+log_level = log_level.upper()
+logging.basicConfig(format='%(asctime)s : %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',
+                    filename='canvass_events.log', filemode='w', level=logging.DEBUG)
 
 def _input_project_config_file():
     current_folder_path, current_folder_name = os.path.split(os.getcwd())
