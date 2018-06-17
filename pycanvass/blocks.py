@@ -8,12 +8,13 @@ import csv
 import pycanvass.global_variables as gv
 import os
 import pycanvass.complexnetwork as cn
-
+import logging
+from shutil import copyfile
 
 
 def set_simulation_folder(projectname):
     cwd = os.getcwd()
-    newpath = os.path.join(cwd,projectname)
+    newpath = os.path.join(cwd, projectname)
     if not os.path.exists(newpath):
         os.mkdir(newpath)
 
@@ -101,7 +102,7 @@ def rebuild():
                             gen=node[6],
                             kind=node[7],
                             critical=node[8],
-                            category = node[9])
+                            category=node[9])
 
             node_dict[node_name] = node_obj
 
@@ -120,11 +121,27 @@ def load_project():
     gv.project = json.load(project_file)
     project_file.close()
 
+    # keep node backup copy
+    from shutil import copyfile
+
+    # keep edge backup copy
+
     edge_file = gv.project["data"]["edges"]
     gv.filepaths["edges"] = edge_file
+    try:
+        if os.path.isfile(edge_file):
+            temp = os.path.basename(edge_file)
+            filename = os.path.splitext(temp)[0]
+            edge_backup_filename = filename + "-backup.csv"
+    except:
+        logging.error("Failed to create backup files")
+
 
     node_file = gv.project["data"]["nodes"]
     gv.filepaths["nodes"] = node_file
+
+    metric_file = gv.project["resiliency_metric"]["algorithm"]
+    gv.filepaths["metric"] = metric_file
 
     edge_dict = {}
     node_dict = {}
@@ -151,7 +168,8 @@ def load_project():
                             wind_risk=edge[9],
                             water_risk=edge[10],
                             rating=edge[11],
-                            hardening=edge[12])
+                            hardening=edge[12],
+                            availability=edge[13])
 
             edge_dict[edge_name] = edge_obj
             number = number + 1
@@ -176,7 +194,7 @@ def load_project():
                             gen=node[6],
                             kind=node[7],
                             critical=node[8],
-                            category = node[9])
+                            category=node[9])
 
             node_dict[node_name] = node_obj
 
@@ -205,17 +223,19 @@ def make_edges(filename):
                             wind_risk=edge[9],
                             water_risk=edge[10],
                             rating=edge[11],
-                            hardening=edge[12])
+                            hardening=edge[12],
+                            availability=edge[13])
 
             Edges[edge_name] = edge_obj
 
-
     return Edges
+
 
 class Threat:
     """
     Threat anchors are the locations where an impact of any event is most likely to be experienced
     """
+
     def __init__(self, anchor, lat, long, strength):
         self.anchor = anchor
         self.lat = lat
@@ -231,7 +251,7 @@ class Edge:
     allEdges = []
 
     def __init__(self, name, kind, from_node, to_node, status, r, x, b, wind_risk, water_risk, fire_risk, rating,
-                 hardening):
+                 hardening, availability):
         """
         constructor method
         """
@@ -239,15 +259,16 @@ class Edge:
         self.kind = kind
         self.from_node = from_node
         self.to_node = to_node
-        self.status = status      # status: normal status. If Normally Open, status = 1; If Normally Closed, status = 0
-        self.r = r                # resistance:
-        self.x = x                # impedance:
+        self.status = status  # status: normal status. If Normally Open, status = 1; If Normally Closed, status = 0
+        self.r = r  # resistance:
+        self.x = x  # impedance:
         self.b = b
         self.wind_risk = wind_risk
         self.water_risk = water_risk
         self.fire_risk = fire_risk
         self.rating = rating
         self.hardening = hardening
+        self.availability = availability
 
         Edge.numberOfEdges += 1
         Edge.allEdges.append(self)
@@ -265,8 +286,8 @@ class Node:
     Nodes include all generators, poles, loads, meters, etc.
     """
 
-    numberOfNodes = 0           # Number of all nodes in the network
-    allNodes = []               # Collection of all nodes in the network
+    numberOfNodes = 0  # Number of all nodes in the network
+    allNodes = []  # Collection of all nodes in the network
 
     def __init__(self, name, phase, lat, long, voltage, load, gen, kind, critical, category):
         self.name = name
@@ -288,5 +309,3 @@ class Node:
         :return:
         """
         print(self.numberOfNodes)
-
-

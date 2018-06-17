@@ -1,12 +1,16 @@
-import pycanvass.global_variables as gv
-import networkx as nx
 import csv
-import random
-import numpy as np
-import pycanvass.data_bridge as db
-import pprint
 import logging
+import pprint
 import sys
+import json
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import pycanvass.complexnetwork as cn
+import pycanvass.data_bridge as db
+import pycanvass.data_visualization as dv
+import pycanvass.global_variables as gv
+from networkx import DiGraph
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -19,7 +23,7 @@ edge_switches = {}
 
 def upstream_edge_info(wg, n):
     upstream_edges = list(nx.edge_dfs(wg, n, orientation='reverse'))
-    print(upstream_edges)
+    # print(upstream_edges)
     up_switch_dict = {}
     e_file = gv.filepaths["edges"]
     for u in upstream_edges:
@@ -38,17 +42,52 @@ def upstream_edge_info(wg, n):
                     if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
                         if edge_search_result_1 != 0 or edge_search_result_2 != 0:
                             if row[1].lstrip() == "switch":
-                                print("[i] Upstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4],
-                                                                                                     row[13]))
+                                # print("[i] Upstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4],
+                                # row[13]))
                                 up_switch_dict[row[0]] = row[4]
                             if row[1].lstrip() == "transformer":
-                                print(
-                                    "[i] Upstream Transformer: {}, Status: {}, Availability: {}".format(row[0], row[4],
-                                                                                                        row[13]))
+                                pass
+                                # print(
+                                # " [i] Upstream Transformer: {}, Status: {}, Availability: {}".format(row[0], row[4],
+                                # row[13]))
 
         except:
             print("[x] Error in up-stream edge search.")
     return up_switch_dict
+
+
+def lose_edge(from_node, to_node):
+    # Normal graph
+    g_normal = gv.graph_collection[0]
+    cn.lat_long_layout(g_normal, show=True, save=False, title="Network in its current state")
+    g_normal_damaged = nx.Graph()
+    try:
+        g_normal.remove_edge(from_node, to_node)
+    except:
+        print("[i] This edge in the normal graph may have been lost before. Moving on. ")
+    g_normal_damaged.add_edges_from(g_normal.edges())
+    cn.add_node_attr(g_normal_damaged)
+    gv.graph_collection.append(g_normal_damaged)
+
+    # Total graph
+    g_total = gv.graph_collection[1]
+    cn.lat_long_layout(g_total, show=True, save=False, title="All possible paths in the network")
+    g_total_damaged = nx.DiGraph()
+    try:
+        g_total.remove_edge(from_node, to_node)
+    except:
+        print("[i] This edge in the complete graph may have been lost before. Moving on. ")
+    g_total_damaged.add_edges_from(g_total.edges())
+    cn.add_node_attr(g_total_damaged)
+    gv.graph_collection.append(g_total_damaged)
+
+    edge_of_path_name = from_node + "_to_" + to_node
+    try:
+        db.edit_edge_status(edge_of_path_name, set_status=0, availability=0)
+    except:
+        print("[i] Excel file could not be edited. It needs to be closed during the simulation.")
+
+    return g_normal_damaged
 
 
 def downstream_edge_info(wg, n):
@@ -63,44 +102,126 @@ def downstream_edge_info(wg, n):
         edge_of_path_name_2 = q + "_to_" + p
         edge_search_result_1 = db._edge_search(edge_of_path_name_1)
         edge_search_result_2 = db._edge_search(edge_of_path_name_2)
-        try:
-            with open(e_file, 'r+') as f:
-                csvr = csv.reader(f)
-                csvr = list(csvr)
-                for row in csvr:
-                    if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
-                        if edge_search_result_1 != 0 or edge_search_result_2 != 0:
-                            if row[1].lstrip() == "switch":
-                                print("[i] Downstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4],
-                                                                                                       row[13]))
-                                down_switch_dict[row[0]] = row[4]
-                            if row[1].lstrip() == "transformer":
-                                print("[i] Downstream Transformer: {}, Status: {}, Availability: {}".format(row[0],
-                                                                                                            row[4],
-                                                                                                            row[13]))
+        # try:
+        with open(e_file, 'r+') as f:
+            csvr = csv.reader(f)
+            csvr = list(csvr)
+            for row in csvr:
+                if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
+                    if edge_search_result_1 != 0 or edge_search_result_2 != 0:
+                        if row[1].lstrip() == "switch":
+                            # print("[i] Downstream Switch: {}, Status: {}, Availability: {}".format(row[0], row[4],
+                            # row[13]))
+                            down_switch_dict[row[0]] = row[4]
+                        if row[1].lstrip() == "transformer":
+                            pass
+                            # print("[i] Downstream Transformer: {}, Status: {}, Availability: {}".format(row[0],
+                            # row[4],
+                            # row[13]))
 
-        except:
-            print("[x] Error in downstream edge search.")
+        # except:
+        #     print("[x] Error in downstream edge search.")
 
     return down_switch_dict
 
 
 def edge_info(edgename):
+    """
+
+    :param edgename:
+    :return:
+    """
     return
 
 
-
-def restore():
+def reconfigure(node_to_restore, damaged_graph):
     """
-    Algorithm:
+    Algorithm: Kruskal Minimum Spanning Tree
     Damaged graph.
-    Path search in complete graph.
+    Path search from node_to_restore, in complete graph to generators
     :return:
     """
 
+    generator_nodes = []
+    complete_graph = gv.graph_collection[3]
+    undir_complete_graph = nx.Graph() #complete_graph.to_undirected()
+    e_file = gv.filepaths["edges"]
+    # Calculate the impact on edge and attribute it to undir_complete_graph:
+    complete_graph_edgelist = complete_graph.edges()
+    temp_edge_impact_dict = {}
+    with open("edge_risk_profile_during_reconfiguration.csv", "w+",newline='') as risk_profile_data:
+        for m in complete_graph_edgelist:
+            edge_of_path_name_1 = m[0] + "_to_" + m[1]
+            edge_of_path_name_2 = m[1] + "_to_" + m[0]
+            edge_search_result_1 = db._edge_search(edge_of_path_name_1)
+            edge_search_result_2 = db._edge_search(edge_of_path_name_2)
+            with open(e_file, 'r+') as f:
+                csvr = csv.reader(f)
+                csvr = list(csvr)
+
+                for row in csvr:
+                    if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
+                        if edge_search_result_1 != 0:
+                            impact = impact_on_edge(edge_of_path_name_1)
+                            temp_edge_impact_dict[edge_of_path_name_1] = impact
+                            undir_complete_graph.add_edge(m[0], m[1], weight=impact)
+                            write_string = m[0]+"_to_"+m[1] + "," + str(impact) + "\n"
+                            risk_profile_data.write(write_string)
+                        elif edge_search_result_2 != 0:
+                            impact = impact_on_edge(edge_of_path_name_2)
+                            temp_edge_impact_dict[edge_of_path_name_1] = impact
+                            undir_complete_graph.add_edge(m[1], m[0], weight=impact)
+                            write_string = m[1] + "_to_" + m[0] + "," + str(impact) + "\n"
+                            risk_profile_data.write(write_string)
+
+    cn.add_node_attr(undir_complete_graph)
+
+    for k, v in undir_complete_graph.nodes(data=True):
+        if float(v['gen']) > 0 or v['gen'].lstrip() == "inf":
+            generator_nodes.append(k)
+    print("Available generator nodes are {}".format(generator_nodes))
+    logging.info("Reconfiguration function called")
+    logging.info("Available generator nodes are {}".format(generator_nodes))
+
+    minimum_spanning_edges = nx.minimum_spanning_edges(undir_complete_graph, data=False)
+    new_graph: DiGraph = nx.DiGraph()
 
 
-def reconfigure(from_node, to_node, commit=False, control=False):
+    for m in minimum_spanning_edges:
+        edge_of_path_name_1 = m[0] + "_to_" + m[1]
+        edge_of_path_name_2 = m[1] + "_to_" + m[0]
+        edge_search_result_1 = db._edge_search(edge_of_path_name_1)
+        edge_search_result_2 = db._edge_search(edge_of_path_name_2)
+        with open(e_file, 'r+') as f:
+            csvr = csv.reader(f)
+            csvr = list(csvr)
+
+            for row in csvr:
+                if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
+                    try:
+                        impact = temp_edge_impact_dict[edge_of_path_name_1]
+                    except:
+                        impact = temp_edge_impact_dict[edge_of_path_name_2]
+
+                    if edge_search_result_1 != 0:
+                        new_graph.add_edge(m[0], m[1], weight=float(impact))
+
+                    elif edge_search_result_2 != 0:
+                        new_graph.add_edge(m[1], m[0], weight=float(impact))
+
+    print(new_graph.edges())
+    cn.add_node_attr(new_graph)
+    cn.lat_long_layout(new_graph, show=True, save=False, title="Minimum Spanning Tree Restoration")
+
+    try:
+        cyclic_path = list(nx.find_cycle(new_graph, node_to_restore, orientation='ignore'))
+        print(cyclic_path)
+    except nx.NetworkXNoCycle:
+        print("[i] All loads could be picked without loop elimination.")
+
+
+
+def restore(from_node, to_node, commit=False, control=False):
     """
     Change switch status is upstream and downstream edges.
     Run power flow to verify.
@@ -201,7 +322,7 @@ def primary_threat_anchor_of_node(node, ignore_multiple_threats_within="100"):
             tmp_var = distance
 
     primary_threat_anchor = {"name": most_destructive_threat_anchor, "strength": strength, "distance": distance}
-    # print("For node %s, the most significant threat anchor is %s" % (node.name ,most_destructive_threat_anchor))
+    logging.info("For node %s, the most significant threat anchor is %s" % (node.name, most_destructive_threat_anchor))
 
     return primary_threat_anchor
 
@@ -228,28 +349,58 @@ def impact_on_node(node_name):
 
     threat_anchor = primary_threat_anchor_of_node(node)
 
-    print('Calculating impact of threat labeled %s on node %s' % (threat_anchor["name"], node.name))
-    risk = 1
+    logging.info('Calculating impact of threat labeled %s on node %s' % (threat_anchor["name"], node.name))
+
     if node.category.lstrip() == "res":
-        risk = gv.node_res[node.name]
+        try:
+            risk = gv.node_res[node.name]
+        except:
+            risk = 2
     elif node.category.lstrip() == "biz":
-        risk = gv.node_biz[node.name]
+        try:
+            risk = gv.node_biz[node.name]
+        except:
+            risk = 4
     elif node.category.lstrip() == "wlf":
-        risk = gv.node_wlf[node.name]
+        try:
+            risk = gv.node_wlf[node.name]
+        except:
+            risk = 8
     elif node.category.lstrip() == "shl":
-        risk = gv.node_shl[node.name]
+        try:
+            risk = gv.node_shl[node.name]
+        except:
+            risk = 9
     elif node.category.lstrip() == "law":
-        risk = gv.node_law[node.name]
+        try:
+            risk = gv.node_law[node.name]
+        except:
+            risk = 4
     elif node.category.lstrip() == "wat":
-        risk = gv.node_wat[node.name]
+        try:
+            risk = gv.node_wat[node.name]
+        except:
+            risk = 6
     elif node.category.lstrip() == "com":
-        risk = gv.node_com[node.name]
+        try:
+            risk = gv.node_com[node.name]
+        except:
+            risk = 1
     elif node.category.lstrip() == "trn":
-        risk = gv.node_trn[node.name]
+        try:
+            risk = gv.node_trn[node.name]
+        except:
+            risk = 6
     elif node.category.lstrip() == "sup":
-        risk = gv.node_sup[node.name]
+        try:
+            risk = gv.node_sup[node.name]
+        except:
+            risk = 7
     else:
-        risk = gv.node_utl[node.name]
+        try:
+            risk = gv.node_utl[node.name]
+        except:
+            risk = 9
 
     return (float(threat_anchor["strength"]) / float(threat_anchor["distance"])) * risk
 
@@ -268,48 +419,64 @@ def path_search(G, n1, n2, criterion="least_risk"):
     return path
 
 
-def load_and_demand_query(path):
+def find_spanning_tree():
+    """
+    Cover maximum nodes in a damaged network, using least number of edges, or such that the lowest sum of edges are achieved.
+    Implementation of Kruskal's Algorithm.
+    Validated.
+    :return:
+    """
+
+    pass
+
+
+def load_and_demand_query(path, verbose=True):
     loads = 0
     gens = 0
     demand_kw = 0.0
     gen_kw = 0.0
     e_file = gv.filepaths["edges"]
+    if type(path) is str:
+        n = node_object_from_node_name(path)
+    else:
+        for p in path:
+            n = node_object_from_node_name(p)
+            i = path.index(p)
+            if i < len(path) - 1:
+                q = path[i + 1]
+                edge_of_path_name_1 = p + "_to_" + q
+                edge_of_path_name_2 = q + "_to_" + p
+                edge_search_result_1 = db._edge_search(edge_of_path_name_1)
+                edge_search_result_2 = db._edge_search(edge_of_path_name_2)
+                try:
+                    with open(e_file, 'r+') as f:
+                        csvr = csv.reader(f)
+                        csvr = list(csvr)
+                        for row in csvr:
+                            if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
+                                if edge_search_result_1 != 0 or edge_search_result_2 != 0:
+                                    edge_status_list[row[0]] = row[4]
+                                    if row[1].lstrip() == "switch":
+                                        # print("[i] Switch {} found!".format(row[0]))
+                                        edge_switches[row[0]] = row[4]
+                except:
+                    print("[x] Edge could not be queried for status for the nodes.")
 
-    for p in path:
-        n = node_object_from_node_name(p)
-        i = path.index(p)
-        if i < len(path) - 1:
-            q = path[i + 1]
-            edge_of_path_name_1 = p + "_to_" + q
-            edge_of_path_name_2 = q + "_to_" + p
-            edge_search_result_1 = db._edge_search(edge_of_path_name_1)
-            edge_search_result_2 = db._edge_search(edge_of_path_name_2)
-            try:
-                with open(e_file, 'r+') as f:
-                    csvr = csv.reader(f)
-                    csvr = list(csvr)
-                    for row in csvr:
-                        if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
-                            if edge_search_result_1 != 0 or edge_search_result_2 != 0:
-                                edge_status_list[row[0]] = row[4]
-                                if row[1].lstrip() == "switch":
-                                    print("[i] Switch {} found!".format(row[0]))
-                                    edge_switches[row[0]] = row[4]
-            except:
-                print("[x] Edge could not be queried for status for the nodes.")
+            if int(n.load) > 0:
+                loads += 1
+                demand_kw += float(n.load)
+            if n.gen.lstrip() != "inf":
+                gen_kw += float(n.gen)
 
-        if int(n.load) > 0:
-            loads += 1
-            demand_kw += float(n.load)
-        if n.gen.lstrip() != "inf":
-            gen_kw += float(n.gen)
+    if verbose:
+        print("[i] Number of loads = {}, Demand = {} kW, Generation = {} kW".format(loads, demand_kw, gen_kw))
+        print("[i] Edge Statuses of the path:")
+        pp.pprint(edge_status_list)
 
-    print("[i] Number of loads = {}, Demand = {} kW, Generation = {} kW".format(loads, demand_kw, gen_kw))
-    print("[i] Edge Statuses of the path:")
-    pp.pprint(edge_status_list)
+        if verbose:
+            print("[i] Switch Status:")
+            pp.pprint(edge_switches)
 
-    print("[i] Switch Status:")
-    pp.pprint(edge_switches)
     load_and_demand_query_dict = {}
     load_and_demand_query_dict["edge_status"] = edge_status_list
     load_and_demand_query_dict["switch_status"] = edge_switches
@@ -408,8 +575,8 @@ def impact_on_edge(e):
             csvr = list(csvr)
             for row in csvr:
                 if row[0].lstrip() == edge_name and edge_search_result != 0:
-                    from_node_of_e = row[2]
-                    to_node_of_e = row[3]
+                    from_node_of_e = row[2].lstrip()
+                    to_node_of_e = row[3].lstrip()
                     hardening = float(row[12])
     except:
         print("[x] Cannot find the requested edge.\n[i] Calculating impact on substation PCC instead.")
@@ -423,6 +590,26 @@ def impact_on_edge(e):
     risk_of_to_node = impact_on_node(to_node_of_e)
     x = (foliage_risk * ev_intensity * max(risk_of_from_node, risk_of_to_node)) / hardening
     return x
+
+
+def node_risk_calculation(graph, visualize=True, title=""):
+    nodes = graph.nodes()
+    sort_node_by_type()
+
+    project_config_file = open(gv.filepaths["model"])
+    project_settings = json.load(project_config_file)
+    project_config_file.close()
+
+    file_name = project_settings["project_name"] + "-node_risk_calculation.csv"
+    with open(file_name, 'w+') as node_file:
+        node_file.write('name,lat,long,risk\n')
+        for k, v in nodes.items():
+            x = impact_on_node(k.lstrip())
+            write_string = k + "," + v['lat'].lstrip() + "," + v['long'].lstrip() + "," + str(x) + "\n"
+            node_file.write(write_string)
+
+    if visualize:
+        dv.visualize(graph=graph, title=title)
 
 
 def node_object_from_node_name(n_name):

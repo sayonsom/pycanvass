@@ -10,7 +10,7 @@ last_modified: 05/16/2018
 """
 
 global filepaths
-filepaths = {'nodes': "", 'edge': "", 'model': ""}
+filepaths = {'nodes': "", 'edge': "", 'model': "", 'metric': "", "backup": {'nodes': "", 'edge': ""}}
 
 global data_from_device
 data_from_device = {}

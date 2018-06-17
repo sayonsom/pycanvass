@@ -6,8 +6,17 @@ import pandas as pd
 All the quick utility functions, frequently called in other libraries
 """
 
-_version = "0.0.2.10"
+_version = "0.0.2.12"
 
+def reset_data():
+
+    print("[x] Reset data needs to be done manually now.")
+
+def clean_data(string_data):
+    clean_data = string_data.replace(',', '')
+    clean_data = clean_data.lstrip()
+    clean_data = clean_data.replace('(', '').replace(')', '')
+    return clean_data
 
 def _merge_and_align_columns(file_a, file_b):
     df_main = pd.read_csv(file_a)
@@ -55,6 +64,10 @@ def _update_progress(progress):
     text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
     sys.stdout.write(text)
     sys.stdout.flush()
+
+# def _banner_2():
+#     with open("banner.txt"):
+#         f.read()
 
 def _banner(): 
     print("\n" * 100)

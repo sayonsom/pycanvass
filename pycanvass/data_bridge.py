@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import os
 import inspect
 import time
 from collections import defaultdict
@@ -17,6 +18,7 @@ from struct import *
 global received_datapoints
 received_datapoints = 1
 
+
 class CyberNode:
     """
     A class that represents the cyber capabilities of any node in the network.
@@ -32,11 +34,12 @@ class CyberNode:
         self.CVSS = CVSS
         self.firewall = firewall
 
+
 class PairDevices(StreamRequestHandler):
     def handle(self):
 
         ar2 = []
-        
+
         for w in range(received_datapoints):
             ar2.append(0.0)
         print(ar2)
@@ -44,27 +47,40 @@ class PairDevices(StreamRequestHandler):
         # print ('[i] Ready to stream data from {}'.format(self.client_address))
         conn = self.request
         utilities._data_banner()
-        logfile_name = "canvass_cosim_" + str(self.client_address[0]) +"_" + str(self.client_address[1]) + ".csv"
-        logfile = open(logfile_name,"w+")
+        logfile_name = "canvass_cosim_" + str(self.client_address[0]) + "_" + str(self.client_address[1]) + ".csv"
+        logfile = open(logfile_name, "w+")
+
+        # metric_file_path = gv.filepaths["metric"]
+        # sys.path.insert(0, metric_file_path)
+        # temp = os.path.basename(metric_file_path)
+        # metric_filename = os.path.splitext(temp)[0]
+
+
         while True:
             msg = conn.recv(1024)
             if not msg:
                 conn.close()
-                print ('[i] Disconnected from IP: {}, Port: {}'.format(self.client_address[0], self.client_address[1]))
-                break
-            
+                print('[i] Disconnected from IP: {}, Port: {}'.format(self.client_address[0], self.client_address[1]))
+                sys.exit()
+
             # print("[i] Querying device: {}".format(self.client_address))
-            
-            unpacking_string = '>' + "f"*received_datapoints
+
+            unpacking_string = '>' + "f" * received_datapoints
             ar = unpack(unpacking_string, msg)
             for c in range(received_datapoints):
-                print("|{:<20}|{:<20}|{:<10}|{:>46}|".format(time.time(), "GET" ,self.client_address[0], self.client_address[1], ar[c]))
-                log_string = str(time.time()) + ", " + str(self.client_address[0]) + ", " + str(self.client_address[1]) + ", " + str(ar[c]) + "\n"
-                logfile.write(log_string)
-                response_from_server = pack('>f', ar[c]*2)
-                print("|{:<20}|{:^12}|{:<20}|{:<10}|{:>39}|".format(time.time(), "SEND" ,self.client_address[0], self.client_address[1], ar[c]*2))
-                conn.send(response_from_server)
-                
+                ts = time.time()
+                st = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H_%M_%S')
+                print("|{:<20}|{:<12}|{:>20}|{:<10}|{:>39}|".format(st, "RECV", self.client_address[0],
+                                                             self.client_address[1], ar[c]))
+                if save_data:
+                    log_string = str(time.time()) + ", " + str(self.client_address[0]) + ", " + str(
+                        self.client_address[1]) + ", " + str(ar[c]) + "\n"
+                    logfile.write(log_string)
+                # response_from_server = pack('>f', ar[c]*2)
+                # print("|{:<20}|{:^12}|{:<20}|{:<10}|{:>39}|".format(time.time(), "SEND" ,self.client_address[0], self.client_address[1], ar[c]*2))
+                # conn.send(response_from_server)
+            command_string = 'python ' + gv.filepaths["metric"] + " " + str(ar)
+            os.system(command_string)
 
             # if ((ar[4] > 5.0) & (ar[4] < 95.0)):
             #     msg2 = pack('>fI', (ar[2] - ar[3]), 1)  # Pin is negative
@@ -76,12 +92,10 @@ class PairDevices(StreamRequestHandler):
             #     msg2 = pack('>fI', 0.0, 1)
 
             # conn.send(msg2)
-            #print("\n")
-
-    
+            # print("\n")
 
 
-def get_data(external_device,PORT,datapoints):
+def get_data(external_device, PORT, datapoints, save_data=False):
     """
     external_device = Name of the client device from which data is to be received.
     PORT = port of the host computer/controller device
@@ -89,18 +103,17 @@ def get_data(external_device,PORT,datapoints):
     """
     server = ThreadingTCPServer(('', PORT), PairDevices)
     received_datapoints = datapoints
-    print ("[i] Opening Port: {}\n[i] Expecting {} data points\n[?] Waiting for connection from {} >>".format(PORT, datapoints, external_device))
+    print("[i] Opening Port: {}\n[i] Expecting {} data points\n[?] Waiting for connection from {} >>".format(PORT,
+                                                                                                             datapoints,
+                                                                                                             external_device))
     server.serve_forever()
+
 
 # Create a TCP/IP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 
-
-
-
-def setup_new_device(cyber_node_name, ip_value, port_value, protocol_name, cvss = None, firewall = False):
-
+def setup_new_device(cyber_node_name, ip_value, port_value, protocol_name, cvss=None, firewall=False):
     cyber_node = CyberNode(name=cyber_node_name,
                            ip=ip_value,
                            port=port_value,
@@ -133,7 +146,8 @@ def pair_devices(from_device, to_device, protocol, handshake=False, direction="b
         info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         info.wShowWindow = subprocess.SW_HIDE
 
-        output = subprocess.Popen(['ping', '-n', '1', '-w', '500', str(dst_ip)], stdout=subprocess.PIPE, startupinfo=info).communicate()[0]
+        output = subprocess.Popen(['ping', '-n', '1', '-w', '500', str(dst_ip)], stdout=subprocess.PIPE,
+                                  startupinfo=info).communicate()[0]
 
         if "Destination host unreachable" in output.decode('utf-8'):
             print("[i] {} is Offline >> Unreachable".format(to_device.name))
@@ -212,10 +226,10 @@ def connect(device, ip_addr, port, polling_interval=1):
         i += 1
     sock.close()
 
+
 def _print_data_packet(packet):
     print("Received Data Packet")
     print(packet.summary())
-
 
 
 def connect_and_control(device, ip_addr, port, polling_interval=1):
@@ -271,7 +285,7 @@ def _edge_search(e):
             return 0
 
 
-def edit_edge_status(edge_name, flip_status=0):
+def edit_edge_status(edge_name, set_status=1, availability=1):
     new_rows = []
     e_file = gv.filepaths["edges"]
     edge_search_result = _edge_search(edge_name)
@@ -281,23 +295,22 @@ def edit_edge_status(edge_name, flip_status=0):
         for row in csvr:
             new_row = row
             if row[0].lstrip() == edge_name and edge_search_result != 0:
-                print("Status of %s is %s" % (edge_name, row[4]))
-                if flip_status == 1:
-                    if row[4].lstrip() == "1":
-                        print("Changing status from ON to OFF.")
-                        new_row[4] = "0"
+                logging.info("%s : Status %s --> %s, Availability %s --> %s" % (edge_name, row[4], str(set_status), row[13], str(availability)))
+                new_row[4] = set_status
+                new_row[13] = availability
+                # if flip_status == 1:
+                #     if row[4].lstrip() == "1":
+                #         print("Changing status from ON to OFF.")
+                #         new_row[4] = "0"
+                #
+                #     else:
+                #         print("Changing status from OFF to ON.")
+                #         new_row[4] = "1"
 
-                    else:
-                        print("Changing status from OFF to ON.")
-                        new_row[4] = "1"
-
-
-            else:
-                print("Edge not found")
 
             new_rows.append(new_row)
 
-    with open(e_file, 'wb') as f:
+    with open(e_file, 'w', newline='') as f:
         # Overwrite the old file with the modified rows
         writer = csv.writer(f)
         writer.writerows(new_rows)

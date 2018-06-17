@@ -2,7 +2,8 @@
 This library does all the complex network analysis required by the program
 """
 # from typing import List, Any, Tuple, Dict, Union
-
+import inspect
+import csv
 import networkx as nx
 import matplotlib
 import matplotlib.pyplot as plt
@@ -25,7 +26,6 @@ attempts = 0
 settings = ""
 
 
-
 def _input_user_pref_file():
     util._banner()
     current_folder_path, current_folder_name = os.path.split(os.getcwd())
@@ -40,9 +40,8 @@ def _input_user_pref_file():
         user_preference_path = default_json_file_name
     else:
         print("[x] Default user preferences file not found.")
-        user_preference_path=input("\n[i] Please enter the path to your user-preferences file (*.JSON):\n")
-        
-    
+        user_preference_path = input("\n[i] Please enter the path to your user-preferences file (*.JSON):\n")
+
     return str(user_preference_path)
 
 
@@ -50,8 +49,8 @@ while attempts < 4:
     if attempts == 3:
         break
     try:
-        user_preference_path=_input_user_pref_file()
-        u_settings = open(user_preference_path) 
+        user_preference_path = _input_user_pref_file()
+        u_settings = open(user_preference_path)
         settings = json.load(u_settings)
         u_settings.close()
         break
@@ -63,9 +62,6 @@ while attempts < 4:
             sys.exit()
         elif attempts == 2:
             print("[i] One more chance to get the user preference correctly setup.")
-
-
-
 
 
 # ---------------------------
@@ -82,8 +78,52 @@ def add_node_attr(graph):
     :return: dictionary containing node features
     """
     all_nodes = graph.nodes()
+    n_file = gv.filepaths["nodes"]
 
-    return all_nodes
+    for n in all_nodes:
+        node_search_result = _node_search(n)
+        try:
+            with open(n_file, 'r') as f:
+                csvr = csv.reader(f)
+                csvr = list(csvr)
+                for row in csvr:
+                    if row[0].lstrip() == n:
+                        if node_search_result is not 0:
+                            graph.node[n]['type'] = row[9].lstrip()
+                            graph.node[n]['gen'] = row[6].lstrip()
+                            graph.node[n]['demand'] = row[5].lstrip()
+                            graph.node[n]['lat'] = row[2].lstrip()
+                            graph.node[n]['long'] = row[3].lstrip()
+
+        except:
+            print("[x] Error in setting up the node attributes. ")
+            called_from = inspect.stack()[1]
+            called_module = inspect.getmodule(called_from[0])
+            logging.error("[x] Called from - {} : Node attributes could not be set.".format(called_module, e))
+
+
+# # #
+# N #
+# # #
+
+
+def _node_search(n):
+    n_file = gv.filepaths["nodes"]
+    with open(n_file) as f:
+        counter = 0
+        match_flag = 0
+        nodes = csv.reader(f)
+        for node in nodes:
+            counter += 1
+            if node[0].lstrip() == n:
+                match_flag = 1
+                return counter - 1
+
+        if match_flag == 0:
+            called_from = inspect.stack()[1]
+            called_module = inspect.getmodule(called_from[0])
+            logging.error("[x] Called from - {} : Node {} could not be found.".format(called_module, e))
+            return 0
 
 
 # # #
@@ -115,7 +155,7 @@ def build_network(node_dict, edge_dict):
         gv.obj_edges.append(value)
 
     graph = nx.Graph()
-    total_graph = nx.Graph()
+    total_graph = nx.DiGraph()
 
     for key, value in node_dict.items():
         gv.obj_nodes.append(value)
@@ -125,14 +165,13 @@ def build_network(node_dict, edge_dict):
 
     for edge in gv.obj_edges:
         total_graph.add_edge(edge.from_node.lstrip(), edge.to_node.lstrip())
-        if edge.status.lstrip() != "0":
+        if edge.status.lstrip() != "0" and edge.availability.lstrip() != "0":
             graph.add_edge(edge.from_node.lstrip(), edge.to_node.lstrip())
             gv.closed_edges_list.append(tuple((edge.from_node.lstrip(), edge.to_node.lstrip())))
         else:
             gv.open_edges_list.append(tuple((edge.from_node.lstrip(), edge.to_node.lstrip())))
 
-    logging.info("Attempting to populate nodes and edges with values")
-
+    logging.info("Populating nodes and edges with values")
 
     for n in gv.obj_nodes:
         graph.node[n.name]['name'] = n.name
@@ -160,11 +199,12 @@ def build_network(node_dict, edge_dict):
                     if int(n.critical) > 5:
                         gv.all_critical_loads[n.name] = n.load
                 except ValueError:
-                    logging.error("No loads found in the network, while making the graph.")
+                    logging.error("No loads found in the network while making the graph.")
         except ValueError:
-            logging.error("No power resource found in the network, while making the graph.")
+            logging.error("No power resource found in the network while making the graph.")
 
-    gv.graph_collection = [graph, total_graph]
+    gv.graph_collection.append(graph)
+    gv.graph_collection.append(total_graph)
 
     for g in gv.graph_collection:
         for e in gv.obj_edges:
@@ -172,21 +212,23 @@ def build_network(node_dict, edge_dict):
                 g[e.from_node.lstrip()][e.to_node.lstrip()]['water_risk'] = e.water_risk
                 gv.water_risk_values.append(e.water_risk.lstrip())
             except KeyError:
-                print("[i] No edge between %s and %s, so no water risk" % (e.from_node.lstrip(), e.to_node.lstrip()))
+                logging.info("No edge between %s and %s, so no water risk" % (e.from_node.lstrip(), e.to_node.lstrip()))
                 gv.water_risk_values.append(0)
 
             try:
                 g[e.from_node.lstrip()][e.to_node.lstrip()]['wind_risk'] = e.wind_risk
                 gv.wind_risk_values.append(e.wind_risk.lstrip())
             except KeyError:
-                print("[i] No edge between %s and %s, so no wind risk " % (e.from_node.lstrip(), e.to_node.lstrip()))
+                logging.info(
+                    "[i] No edge between %s and %s, so no wind risk " % (e.from_node.lstrip(), e.to_node.lstrip()))
                 gv.wind_risk_values.append(0)
 
             try:
                 g[e.from_node.lstrip()][e.to_node.lstrip()]['fire_risk'] = e.fire_risk
                 gv.fire_risk_values.append(e.fire_risk.lstrip())
             except KeyError:
-                print("[i] No edge between %s and %s, so no fire risk " % (e.from_node.lstrip(), e.to_node.lstrip()))
+                logging.info(
+                    "[i] No edge between %s and %s, so no fire risk " % (e.from_node.lstrip(), e.to_node.lstrip()))
                 gv.fire_risk_values.append(0)
 
     network_dict["normal"] = graph
@@ -195,6 +237,7 @@ def build_network(node_dict, edge_dict):
     network_dict["n_closed"] = gv.closed_edges_list
 
     return network_dict
+
 
 # # #
 # C #
@@ -212,13 +255,10 @@ def _create_pos_dictionary(graph):
     pos_dictionary = {}  # initializing a dictionary to hold the positions
     label_pos_dictionary = {}
     for n in nodes:
-        pos_dictionary[n] = tuple((float(graph.node[n]['lat']), float(graph.node[n]['long'])))
-        label_pos_dictionary[n] = tuple((float(graph.node[n]['lat']) + 0.005, float(graph.node[n]['long']) + 0.005))
+        pos_dictionary[n] = tuple((float(graph.node[n]['long']), float(graph.node[n]['lat'])))
+        label_pos_dictionary[n] = tuple((float(graph.node[n]['lat']), float(graph.node[n]['long'])))
 
     return pos_dictionary, label_pos_dictionary
-
-
-
 
 
 # # #
@@ -242,7 +282,7 @@ def feeder_path(graph, from_node, to_node):
 # L #
 # # #
 
-def lat_long_layout(graph, show=False, save=True):
+def lat_long_layout(graph, show=False, save=True, title="Visualization"):
     """
     Help visualize the network graph and some of its resilience properties.
     If your graph does not come with
@@ -252,7 +292,8 @@ def lat_long_layout(graph, show=False, save=True):
     :return:
     """
     focus = "impact_on_edge"
-    logging.info("Lat_long_layout function used, focus = {}, trying to display = {}, saving = {}".format(focus, show, save))
+    logging.info(
+        "Lat_long_layout function used, focus = {}, trying to display = {}, saving = {}".format(focus, show, save))
 
     try:
         pos, label_pos = _create_pos_dictionary(graph)
@@ -272,7 +313,10 @@ def lat_long_layout(graph, show=False, save=True):
     values = []
 
     for e in graph.edges():
-        values.append(graph[str(e[0])][str(e[1])][focus])
+        try:
+            values.append(graph[str(e[0])][str(e[1])][focus])
+        except:
+            values.append(1)
 
     color_scheme = plt.get_cmap(color_scheme)
     c_norm = colors.Normalize(vmin=0, vmax=7)
@@ -302,7 +346,8 @@ def lat_long_layout(graph, show=False, save=True):
                             pos=label_pos,
                             edge_labels=edge_labels)
 
-    if show == True:
+    if show:
+        plt.title(title)
         plt.show()
 
     if save:
@@ -323,6 +368,7 @@ def loads(critical=False):
         return gv.all_loads
     else:
         return gv.all_critical_loads
+
 
 # # #
 # M #
@@ -361,11 +407,12 @@ def make_path_graph(nodelist, **kwargs):
 
     path_graph = nx.Graph()
     i = 0
-    while i < len(nodelist)-1:
-        path_graph.add_edge(nodelist[i], nodelist[i+1])
+    while i < len(nodelist) - 1:
+        path_graph.add_edge(nodelist[i], nodelist[i + 1])
         i += 1
 
     return path_graph
+
 
 # # #
 # P #
@@ -390,7 +437,6 @@ def preprocess(graph, node_dict, edge_dict):
         gv.obj_edges.append(value)
 
     print("[i] Attempting to populate nodes and edges with values")
-
 
     for n in gv.obj_nodes:
         graph.node[n.name]['name'] = n.name
@@ -419,7 +465,7 @@ def preprocess(graph, node_dict, edge_dict):
             graph[e.from_node][e.to_node]['water_risk'] = e.water_risk
             gv.water_risk_values.append(e.water_risk)
         except KeyError:
-            print("[i] No edge between %s and %s exist in this topology." %(e.from_node, e.to_node))
+            print("[i] No edge between %s and %s exist in this topology." % (e.from_node, e.to_node))
             gv.water_risk_values.append(0)
 
         try:
@@ -435,6 +481,7 @@ def preprocess(graph, node_dict, edge_dict):
         except KeyError:
             print("[i] No edge between %s and %s exist in this topology." % (e.from_node, e.to_node))
             gv.water_risk_values.append(0)
+
 
 # # #
 # R #
@@ -458,7 +505,7 @@ def resiliency_downstream(graph, edgelist, event):
             if e[0].lstrip() == oe.from_node.lstrip() and e[1].lstrip() == oe.to_node.lstrip():
                 risk_dict[tuple((e[0], e[1]))] = (event["water_risk"] * float(oe.water_risk.lstrip())
                                                   + event["wind_risk"] * float(oe.wind_risk.lstrip())
-                                                  + event["fire_risk"] * float(oe.fire_risk.lstrip()))/30
+                                                  + event["fire_risk"] * float(oe.fire_risk.lstrip())) / 30
 
     print("Risk per edge -->")
     print(risk_dict)
@@ -505,11 +552,10 @@ def resiliency(analysis='nodal'):
     edges = g2.edges()
 
     # 2. for which node and edge are you doing the analysis?
-    wg = nx.DiGraph()               # wg: working graph
+    wg = nx.DiGraph()  # wg: working graph
     wg.add_edges_from(edges)
 
     for n in nodes:
-
         # Finding Downstream Edges
         print("Downstream Edges of %s -->" % n)
         downstream_edges = list(nx.dfs_edges(wg, n))
@@ -519,8 +565,6 @@ def resiliency(analysis='nodal'):
         print("Upstream Edges of %s -->" % n)
         upstream_edges = list(nx.edge_dfs(wg, n, orientation='reverse'))
         resiliency_upstream(g2, upstream_edges, event)
-
-
 
     # 3. track back from that edge to a source, or multiple sources
 
@@ -560,8 +604,6 @@ def summary(graph):
 
     return temp_dict
 
-
 # # #
 # V #
 # # #
-
