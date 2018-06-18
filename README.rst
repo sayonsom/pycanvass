@@ -70,11 +70,11 @@ The data set is available in the 'demo_data' folder. The code to obtain the abov
 
     .. code-block:: python
 
-    from pycanvass.all import *
-    project, nodes, edges = load_project()
-    network = build_network(nodes,edges)
-    mygraph = network["normal"]
-    node_risk_calculation(mygraph, title="Tropical Storm: Wind Speeds upto 97 mph, 10 ft water logging")
+        from pycanvass.all import *
+        project, nodes, edges = load_project()
+        network = build_network(nodes,edges)
+        mygraph = network["normal"]
+        node_risk_calculation(mygraph, title="Tropical Storm: Wind Speeds upto 97 mph, 10 ft water logging")
 
 Getting Started Guide
 =====================
