@@ -1,4 +1,4 @@
-anchor_name, lat, long, strength
-TA_1, 46.114, -117.22, 8
-TA_2, 46.112, -117.21, 9
-TA_3, -36.32, 17.21, 2
+anchor_name, lat, long, strength,water_level,wind_speed,fire_temp,seismic_activity,duration
+TA_1,20,15,1,12,87,0,0,4
+TA_2,14,8,1,12,95,0,0,5
+TA_3,8,2,1,15,95,0,0,10

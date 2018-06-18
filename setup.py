@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='pycanvass',
-      version='0.0.2.11',
+      version='0.0.2.12',
       description='Python API for Cyber Attack and Network Vulnerability Assessment Software for Smartgrid',
       long_description=readme(),
       classifiers=[

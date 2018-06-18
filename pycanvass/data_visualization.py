@@ -8,6 +8,7 @@ import pycanvass.global_variables as gv
 # from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 from matplotlib.mlab import griddata
+
 import subprocess
 import sys
 import re
@@ -23,14 +24,16 @@ MEDIUM_FONT = 12
 LARGE_FONT = 20
 
 plt.rc('figure', titlesize=LARGE_FONT)
-
-
+u_settings = open(gv.filepaths["user_preferences"])
+settings = json.load(u_settings)
+u_settings.close()
+interpolation = settings['visualization']['interpolation']
 # -------------------------------
 
 def _grid(x, y, z, resX=100, resY=100):
     xi = np.linspace(min(x), max(x), resX)
     yi = np.linspace(min(y), max(y), resY)
-    Z = griddata(x, y, z, xi, yi, interp='linear')
+    Z = griddata(x, y, z, xi, yi, interp=interpolation)
     X, Y = np.meshgrid(xi, yi)
     return X, Y, Z
 

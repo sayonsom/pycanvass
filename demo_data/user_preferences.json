@@ -1,6 +1,7 @@
 {
   "visualization":{
-    "color_scheme": "gnuplot"
+    "color_scheme": "gnuplot",
+    "interpolation" : "linear"
   },
   "event_log": "debug"
 }

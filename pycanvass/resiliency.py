@@ -144,12 +144,12 @@ def reconfigure(node_to_restore, damaged_graph):
 
     generator_nodes = []
     complete_graph = gv.graph_collection[3]
-    undir_complete_graph = nx.Graph() #complete_graph.to_undirected()
+    undir_complete_graph = nx.Graph()  # complete_graph.to_undirected()
     e_file = gv.filepaths["edges"]
     # Calculate the impact on edge and attribute it to undir_complete_graph:
     complete_graph_edgelist = complete_graph.edges()
     temp_edge_impact_dict = {}
-    with open("edge_risk_profile_during_reconfiguration.csv", "w+",newline='') as risk_profile_data:
+    with open("edge_risk_profile_during_reconfiguration.csv", "w+", newline='') as risk_profile_data:
         for m in complete_graph_edgelist:
             edge_of_path_name_1 = m[0] + "_to_" + m[1]
             edge_of_path_name_2 = m[1] + "_to_" + m[0]
@@ -165,7 +165,7 @@ def reconfigure(node_to_restore, damaged_graph):
                             impact = impact_on_edge(edge_of_path_name_1)
                             temp_edge_impact_dict[edge_of_path_name_1] = impact
                             undir_complete_graph.add_edge(m[0], m[1], weight=impact)
-                            write_string = m[0]+"_to_"+m[1] + "," + str(impact) + "\n"
+                            write_string = m[0] + "_to_" + m[1] + "," + str(impact) + "\n"
                             risk_profile_data.write(write_string)
                         elif edge_search_result_2 != 0:
                             impact = impact_on_edge(edge_of_path_name_2)
@@ -185,7 +185,6 @@ def reconfigure(node_to_restore, damaged_graph):
 
     minimum_spanning_edges = nx.minimum_spanning_edges(undir_complete_graph, data=False)
     new_graph: DiGraph = nx.DiGraph()
-
 
     for m in minimum_spanning_edges:
         edge_of_path_name_1 = m[0] + "_to_" + m[1]
@@ -218,7 +217,6 @@ def reconfigure(node_to_restore, damaged_graph):
         print(cyclic_path)
     except nx.NetworkXNoCycle:
         print("[i] All loads could be picked without loop elimination.")
-
 
 
 def restore(from_node, to_node, commit=False, control=False):
@@ -321,7 +319,14 @@ def primary_threat_anchor_of_node(node, ignore_multiple_threats_within="100"):
             strength = value.strength
             tmp_var = distance
 
-    primary_threat_anchor = {"name": most_destructive_threat_anchor, "strength": strength, "distance": distance}
+        water_risk = value.water_risk
+        fire_risk = value.fire_risk
+        wind_risk = value.wind_risk
+        seismic_risk = value.seismic_risk
+
+    primary_threat_anchor = {"name": most_destructive_threat_anchor, "strength": strength, "distance": distance,
+                             "water_risk": water_risk, "fire_risk": fire_risk, "wind_risk": wind_risk,
+                             "seismic_risk": seismic_risk}
     logging.info("For node %s, the most significant threat anchor is %s" % (node.name, most_destructive_threat_anchor))
 
     return primary_threat_anchor
@@ -351,58 +356,145 @@ def impact_on_node(node_name):
 
     logging.info('Calculating impact of threat labeled %s on node %s' % (threat_anchor["name"], node.name))
 
+    # DEFAULTS
+    # ---------
+    water_tolerance = 7  # FT
+    wind_tolerance = 90  # MPH
+    fire_tolerance = 400  # DEG F
+    seismic_tolerance = 7.5  # RICHTER SCALE
+
     if node.category.lstrip() == "res":
         try:
-            risk = gv.node_res[node.name]
+            relative_importance = gv.node_res[node.name]
+            water_tolerance = 6
+            wind_tolerance = 100
+            fire_tolerance = 400
+            seismic_tolerance = 7
         except:
-            risk = 2
+            relative_importance = 2
     elif node.category.lstrip() == "biz":
         try:
-            risk = gv.node_biz[node.name]
+            relative_importance = gv.node_biz[node.name]
+            water_tolerance = 7  # FT
+            wind_tolerance = 90  # MPH
+            fire_tolerance = 400  # DEG F
+            seismic_tolerance = 7.5  # RICHTER SCALE
         except:
-            risk = 4
+            relative_importance = 4
     elif node.category.lstrip() == "wlf":
         try:
-            risk = gv.node_wlf[node.name]
+            relative_importance = gv.node_wlf[node.name]
+            water_tolerance = 12  # FT
+            wind_tolerance = 130  # MPH
+            fire_tolerance = 600  # DEG F
+            seismic_tolerance = 8  # RICHTER SCALE
         except:
-            risk = 8
+            relative_importance = 8
     elif node.category.lstrip() == "shl":
         try:
-            risk = gv.node_shl[node.name]
+            relative_importance = gv.node_shl[node.name]
+            water_tolerance = 12  # FT
+            wind_tolerance = 130  # MPH
+            fire_tolerance = 600  # DEG F
+            seismic_tolerance = 8  # RICHTER SCALE
         except:
-            risk = 9
+            relative_importance = 9
     elif node.category.lstrip() == "law":
         try:
-            risk = gv.node_law[node.name]
+            relative_importance = gv.node_law[node.name]
+            water_tolerance = 9
+            wind_tolerance = 110
+            fire_tolerance = 400
+            seismic_tolerance = 7.5
         except:
-            risk = 4
+            relative_importance = 4
     elif node.category.lstrip() == "wat":
         try:
-            risk = gv.node_wat[node.name]
+            relative_importance = gv.node_wat[node.name]
+            water_tolerance = 14
+            wind_tolerance = 90
+            fire_tolerance = 700
+            seismic_tolerance = 7
         except:
-            risk = 6
+            relative_importance = 6
     elif node.category.lstrip() == "com":
         try:
-            risk = gv.node_com[node.name]
-        except:
-            risk = 1
+            relative_importance = gv.node_com[node.name]
+        except KeyError:
+            relative_importance = 1
     elif node.category.lstrip() == "trn":
         try:
-            risk = gv.node_trn[node.name]
+            relative_importance = gv.node_trn[node.name]
+            water_tolerance = 2
+            wind_tolerance = 90
+            fire_tolerance = 700
+            seismic_tolerance = 5
         except:
-            risk = 6
+            relative_importance = 6
     elif node.category.lstrip() == "sup":
         try:
-            risk = gv.node_sup[node.name]
+            relative_importance = gv.node_sup[node.name]
+            water_tolerance = 9
+            wind_tolerance = 110
+            fire_tolerance = 400
+            seismic_tolerance = 7.5
         except:
-            risk = 7
+            relative_importance = 7
     else:
         try:
-            risk = gv.node_utl[node.name]
+            relative_importance = gv.node_utl[node.name]
+            water_tolerance = 8
+            wind_tolerance = 90
+            fire_tolerance = 400
+            seismic_tolerance = 7
         except:
-            risk = 9
+            relative_importance = 9
 
-    return (float(threat_anchor["strength"]) / float(threat_anchor["distance"])) * risk
+    # WATER
+
+    water_risk_escalation = 1
+    anticipated_water_risk = float(threat_anchor["water_risk"])
+    if anticipated_water_risk > 0.95 * water_tolerance:
+        water_risk_escalation = (anticipated_water_risk - 0.95 * water_tolerance) * 0.1
+    overall_water_risk = water_risk_escalation * (anticipated_water_risk / water_risk_escalation)
+    if node.preexisting_damage.lstrip() == "1":
+        overall_water_risk = overall_water_risk * 1.25
+
+    # WIND
+
+    wind_risk_escalation = 1
+    anticipated_wind_risk = float(threat_anchor["wind_risk"])
+    if anticipated_wind_risk > 0.90 * wind_tolerance:
+        wind_risk_escalation = (anticipated_wind_risk - 0.90 * wind_tolerance) * 0.1
+    overall_wind_risk = wind_risk_escalation * (anticipated_water_risk / water_risk_escalation)
+    if node.preexisting_damage.lstrip() == "1":
+        overall_wind_risk = overall_wind_risk * 1.25
+
+    # FIRE
+
+    fire_risk_escalation = 1
+    anticipated_fire_risk = float(threat_anchor["fire_risk"])
+    if anticipated_fire_risk > 0.98 * fire_tolerance:
+        fire_risk_escalation = (anticipated_fire_risk - 0.98 * fire_tolerance) * 0.1
+    overall_fire_risk = fire_risk_escalation * (anticipated_water_risk / water_risk_escalation)
+    if node.preexisting_damage.lstrip() == "1":
+        overall_fire_risk = overall_fire_risk * 2.0
+
+    # SEISMIC
+
+    seismic_risk_escalation = 1
+    anticipated_seismic_risk = float(threat_anchor["seismic_risk"])
+    if anticipated_seismic_risk > 0.90 * seismic_tolerance:
+        seismic_risk_escalation = (anticipated_water_risk - 0.95 * seismic_tolerance) * 0.1
+    overall_seismic_risk = seismic_risk_escalation * (anticipated_water_risk / water_risk_escalation)
+    if node.preexisting_damage.lstrip() == "1":
+        overall_seismic_risk = overall_seismic_risk * 2.5
+
+    total_risk = (relative_importance * float(node.foliage) * (
+            overall_wind_risk / float(node.wind_cc) + overall_water_risk / float(node.water_cc) + overall_fire_risk / float(node.fire_cc) + overall_seismic_risk / float(node.seismic_cc))) / (
+                     float(threat_anchor['distance']))
+
+    return total_risk
 
 
 def path_search(G, n1, n2, criterion="least_risk"):
@@ -599,7 +691,7 @@ def node_risk_calculation(graph, visualize=True, title=""):
     project_config_file = open(gv.filepaths["model"])
     project_settings = json.load(project_config_file)
     project_config_file.close()
-
+    logging.info("Performining node risk calculation for all nodes")
     file_name = project_settings["project_name"] + "-node_risk_calculation.csv"
     with open(file_name, 'w+') as node_file:
         node_file.write('name,lat,long,risk\n')

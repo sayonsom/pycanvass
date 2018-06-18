@@ -1,10 +1,10 @@
-name, phase, lat, long, voltage, load, gen, kind, critical, type, backup_dg, wind_cc, water_cc, seismic_cc, fire_cc, bias
-S1, ABCN,46.1382,-117.31321,7200,0, inf, SWING,3, utl,0,7,6,4,6,1
-F1_1, ABCN,46.13232,-117.31472,7200,10,0, PQ,2, res,1,3,3,4,8,1
-F1_2, ABCN,46.13123,-117.31342,7200,10,20, PQ,2, res,1,3,3,4,8,1
-F1_3, ABCN,46.13456,-117.31412,7200,10,0, PQ,2, res,1,3,3,4,8,1
-F1_4, ABCN,46.13344,-117.31352,7200,10,0, PQ,2, res,1,3,3,4,8,1
-F2_1, ABCN,46.11234,-117.41253,7200,30,45, PQ,7, wlf,0,7,6,9,9,1
-F2_2, ABCN,46.11692,-117.41234,7200,30,0, PQ,7, wlf,0,7,6,9,9,1
-F2_3, ABCN,46.11243,-117.41944,7200,30,0, PQ,7, wlf,0,7,6,9,9,1
-F2_4, ABCN,46.11241,-117.41241,7200,30,0, PQ,7, wlf,0,7,6,9,9,1
+name, phase, lat, long, voltage, load, gen, kind, critical, type, backup_dg, wind_cc, water_cc, seismic_cc, fire_cc,preexisting_damage,availability,foliage
+S1, ABCN,14,0,7200,0, inf, SWING,3, utl,0,3,1,4,1,1,1,2
+F1_1, ABCN,7,4,7200,10,0, PQ,2, res,1,1,3,4,1,0,1,1
+F1_2, ABCN,7,9,7200,10,20, PQ,2, res,1,3,3,4,8,0,1,1
+F1_3, ABCN,7,11,7200,10,0, PQ,2, res,1,2,3,4,1,0,1,2
+F1_4, ABCN,7,15,7200,10,0, PQ,2, res,1,4,3,4,8,0,1,3
+F2_1, ABCN,21,4,7200,30,45, PQ,7, wlf,0,1,1,9,3,0,1,5
+F2_2, ABCN,21,9,7200,30,0, PQ,7, wlf,0,3,1,9,3,0,1,8
+F2_3, ABCN,21,11,7200,30,0, PQ,7, wlf,0,1,2,9,9,0,1,9
+F2_4, ABCN,21,15,7200,30,0, PQ,7, wlf,0,3,2,9,1,0,1,10

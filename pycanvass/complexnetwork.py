@@ -50,6 +50,7 @@ while attempts < 4:
         break
     try:
         user_preference_path = _input_user_pref_file()
+        gv.filepaths["user_preferences"] = user_preference_path
         u_settings = open(user_preference_path)
         settings = json.load(u_settings)
         u_settings.close()

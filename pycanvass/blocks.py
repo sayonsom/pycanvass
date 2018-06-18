@@ -39,7 +39,13 @@ def load_threats(filename):
             threat_obj = Threat(anchor=threat[0],
                                 lat=threat[1],
                                 long=threat[2],
-                                strength=threat[3])
+                                strength=threat[3],
+                                water_risk=threat[4],
+                                fire_risk=threat[6],
+                                wind_risk=threat[5],
+                                seismic_risk=threat[7],
+                                duration=threat[8]
+                                )
 
             gv.threat_dict[threat_name] = threat_obj
     if len(gv.threat_dict) == 0:
@@ -136,7 +142,6 @@ def load_project():
     except:
         logging.error("Failed to create backup files")
 
-
     node_file = gv.project["data"]["nodes"]
     gv.filepaths["nodes"] = node_file
 
@@ -194,7 +199,16 @@ def load_project():
                             gen=node[6],
                             kind=node[7],
                             critical=node[8],
-                            category=node[9])
+                            category=node[9],
+                            backup_dg=node[10],
+                            wind_cc=node[11],
+                            water_cc=node[12],
+                            seismic_cc=node[13],
+                            fire_cc=node[14],
+                            preexisting_damage=node[15],
+                            availability=node[16],
+                            foliage=node[17],
+                            )
 
             node_dict[node_name] = node_obj
 
@@ -236,16 +250,21 @@ class Threat:
     Threat anchors are the locations where an impact of any event is most likely to be experienced
     """
 
-    def __init__(self, anchor, lat, long, strength):
+    def __init__(self, anchor, lat, long, strength, water_risk, fire_risk, wind_risk, seismic_risk, duration):
         self.anchor = anchor
         self.lat = lat
         self.long = long
         self.strength = strength
+        self.water_risk = water_risk
+        self.fire_risk = fire_risk
+        self.wind_risk = wind_risk
+        self.seismic_risk = seismic_risk
+        self.duration = duration
 
 
 class Edge:
     """
-    Edges include Transformers, OH Lines, Underground Lines,
+    Edges include transformers, overhead Lines, underground Lines, switches, fuses, reclosers, etc.
     """
     numberOfEdges = 0
     allEdges = []
@@ -289,7 +308,8 @@ class Node:
     numberOfNodes = 0  # Number of all nodes in the network
     allNodes = []  # Collection of all nodes in the network
 
-    def __init__(self, name, phase, lat, long, voltage, load, gen, kind, critical, category):
+    def __init__(self, name, phase, lat, long, voltage, load, gen, kind, critical, category, backup_dg, wind_cc,
+                 water_cc, seismic_cc, fire_cc, preexisting_damage, availability, foliage):
         self.name = name
         self.phase = phase
         self.lat = lat
@@ -300,6 +320,15 @@ class Node:
         self.kind = kind
         self.critical = critical
         self.category = category
+        self.backup_dg = backup_dg
+        self.wind_cc = wind_cc
+        self.water_cc = water_cc
+        self.seismic_cc = seismic_cc
+        self.fire_cc = fire_cc
+        self.preexisting_damage = preexisting_damage
+        self.availability = availability
+        self.foliage = foliage
+
         Node.numberOfNodes += 1
         Node.allNodes.append(self)
 
