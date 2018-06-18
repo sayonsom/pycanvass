@@ -60,7 +60,7 @@ Simulation of unfavorable events and risk estimation of power system infrastruct
 Tropical Storm
 --------------
 
-In an imaginary simple distribution system that has 8 loads downstream of a substation, and is faced with sustained wind gusts of 97 mph, and anticipates upto 14 ft of water logging - what's the risk to the power grid infrastructure?
+In an imaginary simple distribution system that has 8 loads downstream of a substation, and is faced with sustained wind gusts of 97 mph, and anticipates upto 10 ft of water logging - what's the risk to the power grid infrastructure?
 
 With 4 lines of code, PyCanvass can help solve these kinds of problem.
 
@@ -102,8 +102,8 @@ We try to make this library accessible to non-programmers, programming beginners
     
     .. code-block:: python
 
-    paths = path_search(mygraph, 'F1_2', 'F2_3', criterion="least_risk")
-    print(paths)
+        paths = path_search(mygraph, 'F1_2', 'F2_3', criterion="least_risk")
+        print(paths)
 
 Citation
 ========
