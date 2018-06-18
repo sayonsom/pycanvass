@@ -53,6 +53,33 @@ These installations have the freshest code, but it may contain bugs. Please foll
 
 Assumes you have Python installed and already set to your path.
 
+Simulation of unfavorable events and risk estimation of power system infrastructure
+===================================================================================
+
+
+Tropical Storm
+--------------
+
+In an imaginary simple distribution system that has 8 loads downstream of a substation, and is faced with sustained wind gusts of 97 mph, and anticipates upto 14 ft of water logging - what's the risk to the power grid infrastructure?
+
+With 4 lines of code, PyCanvass can help solve these kinds of problem.
+
+.. image:: https://s8.postimg.cc/rx65jrzpx/tropical_storm_97_mph_10_ft_water.png
+
+The data set is available in the 'demo_data' folder. The code to obtain the above results is:
+
+    .. code-block:: python
+
+    from pycanvass.all import *
+
+    project, nodes, edges = load_project()
+
+    network = build_network(nodes,edges)
+    mygraph = network["normal"]
+
+    node_risk_calculation(mygraph, title="Tropical Storm: Wind Speeds upto 97 mph, 10 ft water logging")
+
+
 Getting Started Guide
 =====================
 
