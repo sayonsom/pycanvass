@@ -8,7 +8,7 @@ import pycanvass.global_variables as gv
 # from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 from matplotlib.mlab import griddata
-
+import logging
 import subprocess
 import sys
 import re
@@ -125,10 +125,11 @@ def visualize(mode="contour_plot", graph=None, criteria="node_risk", title=""):
     project_config_file.close()
 
     if criteria == "node_risk":
-        expected_file_name = project_settings["project_name"] + "-node_risk_calculation.csv"
+        expected_file_name = project_settings["project_name"] + "-nodal_calculation.csv"
         expected_file_name = Path(expected_file_name)
 
     if expected_file_name.exists():
+        # RISK PLOTS
         util._hide_terminal_output()
         fields = ['lat', 'long', 'risk']
         logging.info("[i] Plotting contour plot of the {} of {}".format(criteria, project_settings["project_name"]))
@@ -177,9 +178,9 @@ def visualize(mode="contour_plot", graph=None, criteria="node_risk", title=""):
 
 
     else:
-        print("[x] Could not find the default risk and resiliency file name for {}".format(model_name))
+        print("[x] Could not find the default risk and resiliency file name for {}".format(expected_file_name))
         print("[i] Please read the documentation on naming conventions")
-        logging.error("Couldn't find the default risk and resiliency file name for {}.".format(model_name))
+        logging.error("Couldn't find the default risk and resiliency file name for {}.".format(expected_file_name))
 
 
 def layout_model(file_or_folder_name, map_random=False):

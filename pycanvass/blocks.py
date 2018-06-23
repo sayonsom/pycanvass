@@ -19,7 +19,45 @@ def set_simulation_folder(projectname):
         os.mkdir(newpath)
 
 
-def load_threats(filename):
+def load_repair():
+    """
+
+    :param filename:
+    :return:
+    """
+    repair_file = gv.project["data"]["repair"]
+
+    with open(repair_file) as f:
+        has_header = csv.Sniffer().has_header(f.read(1024))
+        f.seek(0)  # Rewind.
+        repairs = csv.reader(f)
+        if has_header:
+            next(repairs)  # Skip header row
+
+        for repair in repairs:
+            repairer_name = repair[0]
+            repair_obj = Repair(base_name=repair[0],
+                                lat=repair[1],
+                                long=repair[2],
+                                crew=repair[3],
+                                pole=repair[4],
+                                line=repair[6],
+                                transformer=repair[5],
+                                handpump=repair[7],
+                                switches=repair[8],
+                                mobile_genset=repair[9]
+                                )
+
+            gv.repair_dict[repairer_name] = repair_obj
+
+    if len(gv.repair_dict) == 0:
+        logging.info("No repair crew found")
+        print("[i] No repair crew found")
+    else:
+        logging.info('%d repair crew bases will be used in the simulation' % len(gv.repair_dict))
+
+
+def load_threats():
     """
     Creates objects of all the threat nodes
     :param filename:
@@ -49,9 +87,10 @@ def load_threats(filename):
 
             gv.threat_dict[threat_name] = threat_obj
     if len(gv.threat_dict) == 0:
-        "No threat anchor points? Cool. We will use generic settings and default values."
+        print("[i] No threat anchor points. We will use generic settings and default values.")
+        logging.info('No threat anchor points will be used in the simulation.')
     else:
-        print('%d threat anchor points will be used in the simulation.' % len(gv.threat_dict))
+        logging.info('%d threat anchor points will be used in the simulation.' % len(gv.threat_dict))
 
 
 def rebuild():
@@ -114,6 +153,114 @@ def rebuild():
 
     rebuilt_network_dict = cn.build_network(node_dict, edge_dict)
     return rebuilt_network_dict
+
+def load_project_ts(ts_node_filename, ts_edge_filename, ts_threat_filename,ts_repair_filename):
+    """
+
+    :return:
+    """
+    """
+        Creates the JSON object that has all the parameters users can modify to customize the project
+        :param filename:
+        :return: JSON object
+        """
+    filename = gv.filepaths["model"]
+    project_file = open(filename)
+    gv.project = json.load(project_file)
+    project_file.close()
+
+    # keep node backup copy
+    from shutil import copyfile
+
+    # keep edge backup copy
+
+    # edge_file = gv.project["data"]["edges"]
+    edge_file = ts_edge_filename
+
+    try:
+        if os.path.isfile(edge_file):
+            temp = os.path.basename(edge_file)
+            filename = os.path.splitext(temp)[0]
+            edge_backup_filename = filename + "-backup.csv"
+    except:
+        logging.error("Failed to create backup files")
+
+    # node_file = gv.project["data"]["nodes"]
+    node_file = gv.filepaths["nodes"]
+
+    metric_file = gv.project["resiliency_metric"]["algorithm"]
+    gv.filepaths["metric"] = metric_file
+
+    edge_dict = {}
+    node_dict = {}
+
+    set_simulation_folder(gv.project["project_name"])
+    # Making the edges dictionary here:
+
+    with open(edge_file) as f:
+        has_header = csv.Sniffer().has_header(f.read(1024))
+        f.seek(0)  # Rewind.
+        edges = csv.reader(f)
+        if has_header:
+            next(edges)  # Skip header row
+        number = 1
+        for edge in edges:
+            edge_name = str(edge[0])
+            edge_obj = Edge(name=edge[0],
+                            kind=edge[1],
+                            from_node=edge[2],
+                            to_node=edge[3],
+                            status=edge[4],
+                            r=edge[5], x=edge[6], b=edge[7],
+                            fire_risk=edge[8],
+                            wind_risk=edge[9],
+                            water_risk=edge[10],
+                            rating=edge[11],
+                            hardening=edge[12],
+                            availability=edge[13])
+
+            edge_dict[edge_name] = edge_obj
+            number = number + 1
+
+    # Making the nodes dictionary:
+
+    with open(node_file) as f:
+        has_header = csv.Sniffer().has_header(f.read(1024))
+        f.seek(0)
+        nodes = csv.reader(f)
+        if has_header:
+            next(nodes)  # Skip header row
+
+        for node in nodes:
+            node_name = node[0]
+            node_obj = Node(name=node[0],
+                            phase=node[1],
+                            lat=node[2],
+                            long=node[3],
+                            voltage=node[4],
+                            load=node[5],
+                            gen=node[6],
+                            kind=node[7],
+                            critical=node[8],
+                            category=node[9],
+                            backup_dg=node[10],
+                            wind_cc=node[11],
+                            water_cc=node[12],
+                            seismic_cc=node[13],
+                            fire_cc=node[14],
+                            preexisting_damage=node[15],
+                            availability=node[16],
+                            foliage=node[17],
+                            mttr=node[18],
+                            op_cost=node[19],
+                            repair_cost=node[20]
+                            )
+
+            node_dict[node_name] = node_obj
+
+    load_threats()
+    load_repair()
+    return node_dict, edge_dict
 
 
 def load_project():
@@ -208,11 +355,15 @@ def load_project():
                             preexisting_damage=node[15],
                             availability=node[16],
                             foliage=node[17],
+                            mttr=node[18],
+                            op_cost=node[19],
+                            repair_cost=node[20]
                             )
 
             node_dict[node_name] = node_obj
 
-    load_threats(filename)
+    load_threats()
+    load_repair()
     return gv.project, node_dict, edge_dict
 
 
@@ -243,6 +394,24 @@ def make_edges(filename):
             Edges[edge_name] = edge_obj
 
     return Edges
+
+
+class Repair:
+    """
+    Threat anchors are the locations where an impact of any event is most likely to be experienced
+    """
+
+    def __init__(self, base_name, lat, long, crew, pole, line, transformer, handpump, switches, mobile_genset):
+        self.base_name = base_name
+        self.lat = lat
+        self.long = long
+        self.crew = crew
+        self.pole = pole
+        self.line = line
+        self.transformer = transformer
+        self.handpump = handpump
+        self.switches = switches
+        self.mobile_genset = mobile_genset
 
 
 class Threat:
@@ -309,7 +478,7 @@ class Node:
     allNodes = []  # Collection of all nodes in the network
 
     def __init__(self, name, phase, lat, long, voltage, load, gen, kind, critical, category, backup_dg, wind_cc,
-                 water_cc, seismic_cc, fire_cc, preexisting_damage, availability, foliage):
+                 water_cc, seismic_cc, fire_cc, preexisting_damage, availability, foliage, mttr, op_cost, repair_cost):
         self.name = name
         self.phase = phase
         self.lat = lat
@@ -328,6 +497,9 @@ class Node:
         self.preexisting_damage = preexisting_damage
         self.availability = availability
         self.foliage = foliage
+        self.mttr = mttr
+        self.op_cost = op_cost
+        self.repair_cost = repair_cost
 
         Node.numberOfNodes += 1
         Node.allNodes.append(self)

@@ -6,7 +6,7 @@ import pandas as pd
 All the quick utility functions, frequently called in other libraries
 """
 
-_version = "0.0.2.12"
+_version = "0.0.2.16"
 
 def reset_data():
 
@@ -65,11 +65,28 @@ def _update_progress(progress):
     sys.stdout.write(text)
     sys.stdout.flush()
 
-# def _banner_2():
-#     with open("banner.txt"):
-#         f.read()
+def _banner():
 
-def _banner(): 
+    print("")
+    print("  /$$$$$$                                                            ")
+    print(" /$$__  $$                                                           ")
+    print("| $$  \__/  /$$$$$$  /$$$$$$$  /$$    /$$ /$$$$$$   /$$$$$$$ /$$$$$$$")
+    print("| $$       |____  $$| $$__  $$|  $$  /$$/|____  $$ /$$_____//$$_____/")
+    print("| $$        /$$$$$$$| $$  \ $$ \  $$/$$/  /$$$$$$$|  $$$$$$|  $$$$$$ ")
+    print("| $$    $$ /$$__  $$| $$  | $$  \  $$$/  /$$__  $$ \____  $$\____  $$")
+    print("|  $$$$$$/|  $$$$$$$| $$  | $$   \  $/  |  $$$$$$$ /$$$$$$$//$$$$$$$/")
+    print(" \______/  \_______/|__/  |__/    \_/    \_______/|_______/|_______/ ")
+    print("                                                                     ")
+    print("")
+    print("Cyber Attack & Network Vulnerability Analytics Software for Smartgrids")
+    print("----------------------------------------------------------------------")
+    print("Version           :	   {}".format(_version))
+    print("Author            :     Sayonsom Chanda")
+    print("License           :     GNU v2")
+    print("Help & How to     :     sayon@ieee.org")
+    print("----------------------------------------------------------------------")          
+
+def _banner_2(): 
     print("\n" * 100)
     print("|----------------------------------------------|")
     print("| pyCanvass: {}                          |".format(_version))

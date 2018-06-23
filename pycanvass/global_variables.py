@@ -54,6 +54,9 @@ closed_edges_list = []
 global threat_dict
 threat_dict = {}
 
+global repair_dict
+repair_dict = {}
+
 global all_sources
 all_sources = {}
 

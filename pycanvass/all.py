@@ -13,6 +13,7 @@ from pycanvass.data_bridge import *
 from pycanvass.complexnetwork import *
 from pycanvass.forecast import *
 from pycanvass.data_visualization import *
+from pycanvass.eventloop import *
 import getpass
 
 
@@ -68,7 +69,7 @@ def build_config_file():
         
 
 def setup():
-    _banner()
+    # _banner()
     try:
         if _input_project_config_file() is True:
             return 

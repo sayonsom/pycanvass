@@ -14,6 +14,7 @@ import socket
 import socketserver
 from socketserver import ThreadingTCPServer, StreamRequestHandler
 from struct import *
+import datetime
 
 global received_datapoints
 received_datapoints = 1
@@ -72,15 +73,15 @@ class PairDevices(StreamRequestHandler):
                 st = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H_%M_%S')
                 print("|{:<20}|{:<12}|{:>20}|{:<10}|{:>39}|".format(st, "RECV", self.client_address[0],
                                                              self.client_address[1], ar[c]))
-                if save_data:
-                    log_string = str(time.time()) + ", " + str(self.client_address[0]) + ", " + str(
-                        self.client_address[1]) + ", " + str(ar[c]) + "\n"
-                    logfile.write(log_string)
+                # if save_data:
+                #     log_string = str(time.time()) + ", " + str(self.client_address[0]) + ", " + str(
+                #         self.client_address[1]) + ", " + str(ar[c]) + "\n"
+                #     logfile.write(log_string)
                 # response_from_server = pack('>f', ar[c]*2)
                 # print("|{:<20}|{:^12}|{:<20}|{:<10}|{:>39}|".format(time.time(), "SEND" ,self.client_address[0], self.client_address[1], ar[c]*2))
                 # conn.send(response_from_server)
-            command_string = 'python ' + gv.filepaths["metric"] + " " + str(ar)
-            os.system(command_string)
+            # command_string = 'python ' + gv.filepaths["metric"] + " " + str(ar)
+            # os.system(command_string)
 
             # if ((ar[4] > 5.0) & (ar[4] < 95.0)):
             #     msg2 = pack('>fI', (ar[2] - ar[3]), 1)  # Pin is negative
@@ -264,6 +265,26 @@ def connect_and_control(device, ip_addr, port, polling_interval=1):
     sock.close()
     network = blocks.rebuild()
     return network
+
+
+
+def _node_search(n):
+    n_file = gv.filepaths["nodes"]
+    with open(n_file) as f:
+        counter = 0
+        match_flag = 0
+        nodes = csv.reader(f)
+        for node in nodes:
+            counter += 1
+            if node[0].lstrip() == n:
+                match_flag = 1
+                return counter - 1
+
+        if match_flag == 0:
+            called_from = inspect.stack()[1]
+            called_module = inspect.getmodule(called_from[0])
+            logging.error("[x] Called from - {} : Node {} could not be found.".format(called_module, e))
+            return 0
 
 
 def _edge_search(e):

@@ -10,6 +10,7 @@ import pycanvass.complexnetwork as cn
 import pycanvass.data_bridge as db
 import pycanvass.data_visualization as dv
 import pycanvass.global_variables as gv
+import pycanvass.eventloop as el
 from networkx import DiGraph
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -19,6 +20,16 @@ edge_status_list = {}
 
 global edge_switches
 edge_switches = {}
+
+u_settings = open(gv.filepaths['user_preferences'])
+settings = json.load(u_settings)
+u_settings.close()
+
+
+def interdependent_network_connectivity():
+    interdependent_network_connectivity_dict = {}
+    interdependent_network_connectivity_dict["transport"] = 0.063  # <-- todo: Hard-coded, needs implementation
+    return interdependent_network_connectivity_dict
 
 
 def upstream_edge_info(wg, n):
@@ -30,7 +41,7 @@ def upstream_edge_info(wg, n):
         # edge info:
         p = u[0].lstrip()
         q = u[1].lstrip()
-        edge_of_path_name_1 = p + "_to_" + q
+        edge_of_path_name_1 = p + "_to_" + event_intensity(n)
         edge_of_path_name_2 = q + "_to_" + p
         edge_search_result_1 = db._edge_search(edge_of_path_name_1)
         edge_search_result_2 = db._edge_search(edge_of_path_name_2)
@@ -273,6 +284,7 @@ def distant_between_two_points(p1, p2):
     """
     Calculate the great circle distance between two points
     on the earth (specified in decimal degrees)
+    :return : Distance between two points in miles
     """
     lon1 = p1[0]
     lat1 = p1[1]
@@ -291,7 +303,7 @@ def distant_between_two_points(p1, p2):
     c = 2 * np.arcsin(np.sqrt(a))
     # Radius of earth in kilometers is 6371
     km = 6371 * c
-    return km
+    return km/1.61
 
 
 def primary_threat_anchor_of_node(node, ignore_multiple_threats_within="100"):
@@ -308,7 +320,7 @@ def primary_threat_anchor_of_node(node, ignore_multiple_threats_within="100"):
     proximal_threat_anchors = []  # <- todo: superposition impact of other threat nodes
 
     for k, value in gv.threat_dict.items():
-        "calculate distance between each threat node. "
+        "Calculate distance between each threat node. "
         "Complexity: O(N^2)"  # <- todo: improve the runtime complexity
 
         distance = distant_between_two_points(tuple((float(value.lat), float(value.long))),
@@ -332,6 +344,78 @@ def primary_threat_anchor_of_node(node, ignore_multiple_threats_within="100"):
     return primary_threat_anchor
 
 
+def primary_repair_base(node):
+    """
+    Primary repair base should be dependent on the type of event, and then sorted by distance from the node being
+    studied.
+    Suggested rules for choosing the primary repair base:
+    - If the water risk is high at a particular node, the repair base with a lot of hand-pumps to extract out the water
+    should be the primary repair base.
+    - If wind risk is high, and node edges are connected by OH lines, a repair base with a lot of OH line, pole
+    replacements, and crew_truck should be the primary reapir base.
+
+    :param node:
+    :return:
+    """
+    most_useful_repair_base = ""
+    tmp_var = 100000  # <- any very large value
+    repair_bases = {}
+
+    repair_node_usefulness_score = 0
+
+    for k, value in gv.repair_dict.items():
+        "calculate distance between each threat node. "
+        "Complexity: O(N^2)"  # <- todo: improve the runtime complexity
+
+        distance = distant_between_two_points(tuple((float(value.lat), float(value.long))),
+                                              tuple((float(node.lat), float(node.long))))
+
+        threat_node = primary_threat_anchor_of_node(node)
+
+        if float(threat_node["water_risk"]) > (float(node.water_cc) / 10.0) * float(settings["tolerances"][node.category.lstrip()]["water"]) and float(value.handpump) > 0:
+            repair_node_usefulness_score += float(value.handpump)
+
+        if float(threat_node["wind_risk"]) > (float(node.wind_cc) / 10.0) * float(settings["tolerances"][node.category.lstrip()]["wind"]) and float(value.line) > 0 and float(value.pole) > 0:
+            repair_node_usefulness_score += (float(value.line) + float(value.pole) + float(value.switches) + float(value.mobile_genset))
+
+        if float(threat_node["fire_risk"]) > (float(node.fire_cc) / 10.0) * float(settings["tolerances"][node.category.lstrip()]["fire"]) and float(value.transformer) > 0 and float(value.pole) > 0:
+            repair_node_usefulness_score += (float(value.line) + float(value.transformer) + float(value.pole) + float(value.switches) + float(value.mobile_genset))
+
+        if float(threat_node["seismic_risk"]) > (float(node.seismic_cc) / 10.0) * float(settings["tolerances"][node.category.lstrip()]["seismic"]) and float(value.mobile_genset) > 0 and float(value.pole) > 0 and float(value.line) > 0:
+            repair_node_usefulness_score = (float(value.handpump) + float(value.line) + float(value.transformer) + float(value.pole) + float(value.switches) + float(value.mobile_genset))
+
+        repair_bases[k] = repair_node_usefulness_score
+
+    most_useful_repair_base = max(repair_bases.keys(), key=(lambda key: repair_bases[key]))
+    max_usefulness_score = repair_bases[most_useful_repair_base]
+
+    for kk, vv in repair_bases.items():
+        repair_bases[kk] = vv/max_usefulness_score
+
+    # Normalization to ensure all usefulness scores are reported at values less than or equal to 1
+    most_useful_repair_base = max(repair_bases.keys(), key=(lambda key: repair_bases[key]))
+
+    primary_repair_base = {"name": most_useful_repair_base, "distance": distance, "repair_bases": repair_bases}
+    logging.info("For node %s, the most useful repair base is %s" % (node.name, primary_repair_base['name']))
+
+    return primary_repair_base
+
+
+def node_repairability(n):
+    """
+    This function helps calculate how easy is it for repair crew to navigate to damaged sites, and have accessibility
+    to resources to quickly repair the damages.
+    :param n:
+    :return:
+    """
+    node = node_object_from_node_name(n)
+    prb = primary_repair_base(node)
+    inc = interdependent_network_connectivity()
+    x = prb["distance"] * inc["transport"] * 1/np.exp(event_intensity(n))
+
+    return x
+
+
 def impact_on_nodes(obj_nodes):
     """
 
@@ -349,6 +433,7 @@ def impact_on_node(node_name):
     impact = (strength of event/distance from threat node)*risk of the node
     :return:
     """
+
     node_name = node_name.lstrip()
     node = node_object_from_node_name(node_name)
 
@@ -358,63 +443,39 @@ def impact_on_node(node_name):
 
     # DEFAULTS
     # ---------
-    water_tolerance = 7  # FT
-    wind_tolerance = 90  # MPH
-    fire_tolerance = 400  # DEG F
-    seismic_tolerance = 7.5  # RICHTER SCALE
+    water_tolerance = settings["tolerances"][node.category.lstrip()]["water"]  # FT
+    wind_tolerance = settings["tolerances"][node.category.lstrip()]["wind"]
+    fire_tolerance = settings["tolerances"][node.category.lstrip()]["fire"]
+    seismic_tolerance = settings["tolerances"][node.category.lstrip()]["seismic"]
 
     if node.category.lstrip() == "res":
         try:
             relative_importance = gv.node_res[node.name]
-            water_tolerance = 6
-            wind_tolerance = 100
-            fire_tolerance = 400
-            seismic_tolerance = 7
         except:
             relative_importance = 2
     elif node.category.lstrip() == "biz":
         try:
             relative_importance = gv.node_biz[node.name]
-            water_tolerance = 7  # FT
-            wind_tolerance = 90  # MPH
-            fire_tolerance = 400  # DEG F
-            seismic_tolerance = 7.5  # RICHTER SCALE
         except:
             relative_importance = 4
     elif node.category.lstrip() == "wlf":
         try:
             relative_importance = gv.node_wlf[node.name]
-            water_tolerance = 12  # FT
-            wind_tolerance = 130  # MPH
-            fire_tolerance = 600  # DEG F
-            seismic_tolerance = 8  # RICHTER SCALE
         except:
             relative_importance = 8
     elif node.category.lstrip() == "shl":
         try:
             relative_importance = gv.node_shl[node.name]
-            water_tolerance = 12  # FT
-            wind_tolerance = 130  # MPH
-            fire_tolerance = 600  # DEG F
-            seismic_tolerance = 8  # RICHTER SCALE
         except:
             relative_importance = 9
     elif node.category.lstrip() == "law":
         try:
             relative_importance = gv.node_law[node.name]
-            water_tolerance = 9
-            wind_tolerance = 110
-            fire_tolerance = 400
-            seismic_tolerance = 7.5
         except:
             relative_importance = 4
     elif node.category.lstrip() == "wat":
         try:
             relative_importance = gv.node_wat[node.name]
-            water_tolerance = 14
-            wind_tolerance = 90
-            fire_tolerance = 700
-            seismic_tolerance = 7
         except:
             relative_importance = 6
     elif node.category.lstrip() == "com":
@@ -425,28 +486,16 @@ def impact_on_node(node_name):
     elif node.category.lstrip() == "trn":
         try:
             relative_importance = gv.node_trn[node.name]
-            water_tolerance = 2
-            wind_tolerance = 90
-            fire_tolerance = 700
-            seismic_tolerance = 5
         except:
             relative_importance = 6
     elif node.category.lstrip() == "sup":
         try:
             relative_importance = gv.node_sup[node.name]
-            water_tolerance = 9
-            wind_tolerance = 110
-            fire_tolerance = 400
-            seismic_tolerance = 7.5
         except:
             relative_importance = 7
     else:
         try:
             relative_importance = gv.node_utl[node.name]
-            water_tolerance = 8
-            wind_tolerance = 90
-            fire_tolerance = 400
-            seismic_tolerance = 7
         except:
             relative_importance = 9
 
@@ -454,8 +503,8 @@ def impact_on_node(node_name):
 
     water_risk_escalation = 1
     anticipated_water_risk = float(threat_anchor["water_risk"])
-    if anticipated_water_risk > 0.95 * water_tolerance:
-        water_risk_escalation = (anticipated_water_risk - 0.95 * water_tolerance) * 0.1
+    if anticipated_water_risk > 0.95 * float(water_tolerance):
+        water_risk_escalation = (anticipated_water_risk - 0.95 * float(water_tolerance)) * 0.1
     overall_water_risk = water_risk_escalation * (anticipated_water_risk / water_risk_escalation)
     if node.preexisting_damage.lstrip() == "1":
         overall_water_risk = overall_water_risk * 1.25
@@ -464,8 +513,8 @@ def impact_on_node(node_name):
 
     wind_risk_escalation = 1
     anticipated_wind_risk = float(threat_anchor["wind_risk"])
-    if anticipated_wind_risk > 0.90 * wind_tolerance:
-        wind_risk_escalation = (anticipated_wind_risk - 0.90 * wind_tolerance) * 0.1
+    if anticipated_wind_risk > 0.90 * float(wind_tolerance):
+        wind_risk_escalation = (anticipated_wind_risk - 0.90 * float(wind_tolerance)) * 0.1
     overall_wind_risk = wind_risk_escalation * (anticipated_water_risk / water_risk_escalation)
     if node.preexisting_damage.lstrip() == "1":
         overall_wind_risk = overall_wind_risk * 1.25
@@ -474,8 +523,8 @@ def impact_on_node(node_name):
 
     fire_risk_escalation = 1
     anticipated_fire_risk = float(threat_anchor["fire_risk"])
-    if anticipated_fire_risk > 0.98 * fire_tolerance:
-        fire_risk_escalation = (anticipated_fire_risk - 0.98 * fire_tolerance) * 0.1
+    if anticipated_fire_risk > 0.98 * float(fire_tolerance):
+        fire_risk_escalation = (anticipated_fire_risk - 0.98 * float(fire_tolerance)) * 0.1
     overall_fire_risk = fire_risk_escalation * (anticipated_water_risk / water_risk_escalation)
     if node.preexisting_damage.lstrip() == "1":
         overall_fire_risk = overall_fire_risk * 2.0
@@ -484,17 +533,83 @@ def impact_on_node(node_name):
 
     seismic_risk_escalation = 1
     anticipated_seismic_risk = float(threat_anchor["seismic_risk"])
-    if anticipated_seismic_risk > 0.90 * seismic_tolerance:
-        seismic_risk_escalation = (anticipated_water_risk - 0.95 * seismic_tolerance) * 0.1
+    if anticipated_seismic_risk > 0.90 * float(seismic_tolerance):
+        seismic_risk_escalation = (anticipated_water_risk - 0.95 * float(seismic_tolerance)) * 0.1
     overall_seismic_risk = seismic_risk_escalation * (anticipated_water_risk / water_risk_escalation)
     if node.preexisting_damage.lstrip() == "1":
         overall_seismic_risk = overall_seismic_risk * 2.5
 
     total_risk = (relative_importance * float(node.foliage) * (
-            overall_wind_risk / float(node.wind_cc) + overall_water_risk / float(node.water_cc) + overall_fire_risk / float(node.fire_cc) + overall_seismic_risk / float(node.seismic_cc))) / (
+            overall_wind_risk / float(node.wind_cc) + overall_water_risk / float(
+        node.water_cc) + overall_fire_risk / float(node.fire_cc) + overall_seismic_risk / float(node.seismic_cc))) / (
                      float(threat_anchor['distance']))
 
     return total_risk
+
+
+def node_resiliency(n, verbose=False):
+    """
+    Ability to withstand an impact, and recover in multiple ways.
+    :return:
+    """
+    node = node_object_from_node_name(n)
+    graph = gv.graph_collection[1]
+    graph = graph.to_undirected()
+    generator_nodes = []
+    path_counter = 0
+    for k, v in graph.nodes(data=True):
+        if float(v['gen']) > 0 or v['gen'].lstrip() == "inf":
+            generator_nodes.append(k)
+    # print("[i] Available generator nodes that can be used to restore {} are {}".format(n, generator_nodes))
+    for g in generator_nodes:
+        path = nx.all_simple_paths(graph, n, g)
+        path_counter += len(list(path))
+
+    node_res = path_counter
+
+    if float(node.backup_dg.lstrip()) > 0.01:
+        node_res += float(node.backup_dg.lstrip())
+
+    threat_anchor = primary_threat_anchor_of_node(node)
+
+    if float(threat_anchor["wind_risk"]) > 75:
+        if node_res != 0:
+            node_res = node_res * float(node.wind_cc.lstrip()) / 10.0
+        else:
+            node_res = float(node.wind_cc.lstrip()) / 10.0
+
+    if float(threat_anchor["water_risk"]) > 2.0:
+        if node_res != 0:
+            node_res = node_res * float(node.water_cc.lstrip()) / 10.0
+        else:
+            node_res = float(node.water_cc.lstrip()) / 10.0
+
+    if float(threat_anchor["seismic_risk"]) > 5:
+        if node_res != 0:
+            node_res = node_res * float(node.seismic_cc.lstrip()) / 10.0
+        else:
+            node_res = float(node.seismic_cc.lstrip()) / 10.0
+
+    if float(threat_anchor["fire_risk"]) > 150:
+        if node_res != 0:
+            node_res = node_res * float(node.fire_cc.lstrip()) / 10.0
+        else:
+            node_res = float(node.fire_cc.lstrip()) / 10.0
+
+    if verbose:
+        print("-------------------------")
+        print("Node name    : {}".format(n))
+        print("Redundancy   : {}".format(path_counter))
+        print("Backup       : {}".format(node.backup_dg.lstrip()))
+        print("Fire Proof   : {}".format(node.fire_cc.lstrip()))
+        print("Water Proof  : {}".format(node.water_cc.lstrip()))
+        print("Wind Proof   : {}".format(node.wind_cc.lstrip()))
+        print("Seimic Tol.  : {}".format(node.seismic_cc.lstrip()))
+        print("--------------------------")
+        print("RESILIENCY   : {}".format(node_res))
+        print("--------------------------\n")
+
+    return node_res
 
 
 def path_search(G, n1, n2, criterion="least_risk"):
@@ -625,15 +740,51 @@ def impact_on_edges():
     pass
 
 
-def event_intensity():
+def event_intensity(node_name):
     """
 
     :return: event_intensity
     """
-    event_intensity_number = gv.project["event"]["known_intensity"]
-    if gv.project["event"]["type"] == "hurricane":
-        event_intensity_number = event_intensity_number * 2  # because worst hurricane value is 5
-    return event_intensity_number  # on a scale of 1 to 10, like earthquake scale.
+
+    node = node_object_from_node_name(node_name)
+    threat_node = primary_threat_anchor_of_node(node)
+
+    wind_event_intensity = 4
+    fire_event_intensity = 1
+    seismic_event_intensity = 2
+    water_event_intensity = 2
+
+    if float(threat_node["wind_risk"]) > 75 and float(threat_node["wind_risk"]) < 100:
+        wind_event_intensity = 6
+    elif float(threat_node["wind_risk"]) >= 100 and float(threat_node["wind_risk"]) < 120:
+        wind_event_intensity = 8
+    elif float(threat_node["wind_risk"]) >= 120:
+        wind_event_intensity = 10
+
+    if float(threat_node["fire_risk"]) > 150 and float(threat_node["fire_risk"]) < 200 and float(threat_node["duration"]) >= 1:
+        fire_event_intensity = 6
+    elif float(threat_node["fire_risk"]) > 150 and float(threat_node["fire_risk"]) < 200 and float(threat_node["duration"]) >= 2:
+        fire_event_intensity = 8
+    elif float(threat_node["fire_risk"]) > 200 and float(threat_node["duration"]) >= 2:
+        fire_event_intensity = 10
+
+    if float(threat_node["seismic_risk"]) >= 5 and float(threat_node["seismic_risk"]) < 6:
+        seismic_event_intensity = 6
+    elif float(threat_node["seismic_risk"]) >= 6 and float(threat_node["seismic_risk"]) < 7.5:
+        seismic_event_intensity = 8
+    elif float(threat_node["seismic_risk"]) >= 7.5:
+        seismic_event_intensity = 10
+
+    if float(threat_node["water_risk"]) > 2 and float(threat_node["water_risk"]) < 5:
+        water_event_intensity = 6
+    elif float(threat_node["water_risk"]) >= 5 and float(threat_node["water_risk"]) < 8:
+        water_event_intensity = 8
+    elif float(threat_node["water_risk"]) >= 8:
+        water_event_intensity = 10
+
+    ei = 0.25 * (wind_event_intensity+fire_event_intensity+seismic_event_intensity+water_event_intensity)
+
+    return ei
 
 
 def edge_object_from_edge_name(e_name):
@@ -676,7 +827,9 @@ def impact_on_edge(e):
         to_node_of_e = "F1_1"
         return
 
-    ev_intensity = float(event_intensity())
+    ev_intensity_from = float(event_intensity(from_node_of_e))
+    ev_intensity_to = float(event_intensity(to_node_of_e))
+    ev_intensity = 0.5 * (ev_intensity_from + ev_intensity_to)
     # primary_threat_anchor = primary_threat_anchor_of_node(from_node_of_e)
     risk_of_from_node = impact_on_node(from_node_of_e)
     risk_of_to_node = impact_on_node(to_node_of_e)
@@ -684,24 +837,27 @@ def impact_on_edge(e):
     return x
 
 
-def node_risk_calculation(graph, visualize=True, title=""):
+
+
+def nodal_calculations(graph, visualize=True, title=""):
+
     nodes = graph.nodes()
     sort_node_by_type()
 
     project_config_file = open(gv.filepaths["model"])
     project_settings = json.load(project_config_file)
     project_config_file.close()
-    logging.info("Performining node risk calculation for all nodes")
-    file_name = project_settings["project_name"] + "-node_risk_calculation.csv"
+    logging.info("Performing node risk calculation for all nodes")
+    file_name = project_settings["project_name"] + "-nodal_calculation.csv"
+
     with open(file_name, 'w+') as node_file:
-        node_file.write('name,lat,long,risk\n')
+        node_file.write('name,lat,long,risk,resiliency,repairability\n')
         for k, v in nodes.items():
             x = impact_on_node(k.lstrip())
-            write_string = k + "," + v['lat'].lstrip() + "," + v['long'].lstrip() + "," + str(x) + "\n"
+            y = node_resiliency(k.lstrip())
+            z = node_repairability(k.lstrip())
+            write_string = k + "," + v['lat'].lstrip() + "," + v['long'].lstrip() + "," + str(x) + "," + str(y) + "," + str(z) +"\n"
             node_file.write(write_string)
-
-    if visualize:
-        dv.visualize(graph=graph, title=title)
 
 
 def node_object_from_node_name(n_name):
