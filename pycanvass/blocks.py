@@ -17,15 +17,19 @@ def set_simulation_folder(projectname):
     newpath = os.path.join(cwd, projectname)
     if not os.path.exists(newpath):
         os.mkdir(newpath)
+        os.mkdir(newpath)
 
 
-def load_repair():
+def load_repair(filename=""):
     """
 
     :param filename:
     :return:
     """
-    repair_file = gv.project["data"]["repair"]
+    if filename == "":
+        repair_file = gv.project["data"]["repair"]
+    else:
+        repair_file = filename
 
     with open(repair_file) as f:
         has_header = csv.Sniffer().has_header(f.read(1024))
@@ -57,13 +61,16 @@ def load_repair():
         logging.info('%d repair crew bases will be used in the simulation' % len(gv.repair_dict))
 
 
-def load_threats():
+def load_threats(filename=""):
     """
     Creates objects of all the threat nodes
     :param filename:
     :return: threat_dict: Dictionary containing all the threat objects.
     """
-    threat_file = gv.project["data"]["threats"]
+    if filename == "":
+        threat_file = gv.project["data"]["threats"]
+    else:
+        threat_file = filename
 
     with open(threat_file) as f:
         has_header = csv.Sniffer().has_header(f.read(1024))
@@ -154,7 +161,7 @@ def rebuild():
     rebuilt_network_dict = cn.build_network(node_dict, edge_dict)
     return rebuilt_network_dict
 
-def load_project_ts(ts_node_filename, ts_edge_filename, ts_threat_filename,ts_repair_filename):
+def load_project_ts():
     """
 
     :return:
@@ -167,26 +174,25 @@ def load_project_ts(ts_node_filename, ts_edge_filename, ts_threat_filename,ts_re
     filename = gv.filepaths["model"]
     project_file = open(filename)
     gv.project = json.load(project_file)
+    gv.user_timezone = gv.project["timezone"]
     project_file.close()
+    which_dir = os.getcwd()
+    # print("[i] Loading Node and Edge file from folder {}".format(which_dir))
+    edge_file = "edge-file.csv"
+    node_file = "node-file.csv"
+    threat_file = "threat-file.csv"
+    repair_file = "repair-file.csv"
 
-    # keep node backup copy
-    from shutil import copyfile
+    continue_simulation = True
 
-    # keep edge backup copy
-
-    # edge_file = gv.project["data"]["edges"]
-    edge_file = ts_edge_filename
-
-    try:
-        if os.path.isfile(edge_file):
-            temp = os.path.basename(edge_file)
-            filename = os.path.splitext(temp)[0]
-            edge_backup_filename = filename + "-backup.csv"
-    except:
-        logging.error("Failed to create backup files")
-
-    # node_file = gv.project["data"]["nodes"]
-    node_file = gv.filepaths["nodes"]
+    if os.path.isfile(node_file) and os.path.isfile(edge_file) and os.path.isfile(threat_file) and os.path.isfile(repair_file):
+        continue_simulation = True
+        logging.info("[i] Did find all the required files")
+    else:
+        print("[x] Edge file not found. Simulation will not be completed. ")
+        logging.info("Edge file not found. Simulation will not be completed. ")
+        continue_simulation = False
+        return
 
     metric_file = gv.project["resiliency_metric"]["algorithm"]
     gv.filepaths["metric"] = metric_file
@@ -194,7 +200,6 @@ def load_project_ts(ts_node_filename, ts_edge_filename, ts_threat_filename,ts_re
     edge_dict = {}
     node_dict = {}
 
-    set_simulation_folder(gv.project["project_name"])
     # Making the edges dictionary here:
 
     with open(edge_file) as f:
@@ -260,6 +265,13 @@ def load_project_ts(ts_node_filename, ts_edge_filename, ts_threat_filename,ts_re
 
     load_threats()
     load_repair()
+
+    for key, value in node_dict.items():
+        gv.obj_nodes.append(value)
+
+    for key, value in edge_dict.items():
+        gv.obj_edges.append(value)
+
     return node_dict, edge_dict
 
 
@@ -269,6 +281,10 @@ def load_project():
     :param filename:
     :return: JSON object
     """
+
+    gv.timeseries_data_created = False
+
+
     filename = gv.filepaths["model"]
     project_file = open(filename)
     gv.project = json.load(project_file)
@@ -298,7 +314,7 @@ def load_project():
     edge_dict = {}
     node_dict = {}
 
-    set_simulation_folder(gv.project["project_name"])
+    # set_simulation_folder(gv.project["project_name"])
     # Making the edges dictionary here:
 
     with open(edge_file) as f:
@@ -364,6 +380,13 @@ def load_project():
 
     load_threats()
     load_repair()
+
+    for key, value in node_dict.items():
+        gv.obj_nodes.append(value)
+
+    for key, value in edge_dict.items():
+        gv.obj_edges.append(value)
+
     return gv.project, node_dict, edge_dict
 
 

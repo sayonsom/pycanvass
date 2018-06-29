@@ -146,34 +146,19 @@ def build_network(node_dict, edge_dict):
 
     network_dict = {}
 
-    gv.obj_nodes = []
-    gv.obj_edges = []
-
-    for key, value in node_dict.items():
-        gv.obj_nodes.append(value)
-
-    for key, value in edge_dict.items():
-        gv.obj_edges.append(value)
-
     graph = nx.Graph()
     total_graph = nx.DiGraph()
 
-    for key, value in node_dict.items():
-        gv.obj_nodes.append(value)
-
-    for key, value in edge_dict.items():
-        gv.obj_edges.append(value)
-
     for edge in gv.obj_edges:
         total_graph.add_edge(edge.from_node.lstrip(), edge.to_node.lstrip())
-        if edge.status.lstrip() != "0" and edge.availability.lstrip() != "0":
+        if edge.availability.lstrip() != "0":
             graph.add_edge(edge.from_node.lstrip(), edge.to_node.lstrip())
             gv.closed_edges_list.append(tuple((edge.from_node.lstrip(), edge.to_node.lstrip())))
         else:
             gv.open_edges_list.append(tuple((edge.from_node.lstrip(), edge.to_node.lstrip())))
 
     logging.info("Populating nodes and edges with values")
-
+    # print(graph.nodes())
     for n in gv.obj_nodes:
         graph.node[n.name]['name'] = n.name
         graph.node[n.name]['load'] = n.load
@@ -239,6 +224,112 @@ def build_network(node_dict, edge_dict):
 
     return network_dict
 
+
+def build_network_2(node_dict, edge_dict, timestring):
+    """
+
+    :param node_dict:
+    :param edge_dict:
+    :return: network_dict: Dictionary containing several network graph objects, and edge details
+             network_dict["normal"] : Normal network topology
+             network_dict["total"] : Graph containing self-loops, including reconfiguration options
+             network_dict["n_open"]: List of all edges which are normally open
+             network_dict["n_closed"] : List of all edges which are normally closed
+    """
+
+    network_dict = {}
+
+    graph = nx.Graph()
+    total_graph = nx.DiGraph()
+
+    gv.obj_nodes = []
+    gv.obj_edges = []
+
+    for key, value in node_dict.items():
+        gv.obj_nodes.append(value)
+
+    for key, value in edge_dict.items():
+        gv.obj_edges.append(value)
+
+    for edge in gv.obj_edges:
+        total_graph.add_edge(edge.from_node.lstrip(), edge.to_node.lstrip())
+        if edge.status.lstrip() != "0" and edge.availability.lstrip() != "0":
+            graph.add_edge(edge.from_node.lstrip(), edge.to_node.lstrip())
+            gv.closed_edges_list.append(tuple((edge.from_node.lstrip(), edge.to_node.lstrip())))
+        else:
+            gv.open_edges_list.append(tuple((edge.from_node.lstrip(), edge.to_node.lstrip())))
+
+    logging.info("Building graph for time-stamp {}".format(timestring))
+    # print(graph.nodes())
+
+    for n in gv.obj_nodes:
+        try:
+            graph.node[n.name]['name'] = n.name
+        except KeyError:
+            print("[!] Encountered a disconnected load {}".format(n.name))
+            continue
+        graph.node[n.name]['load'] = n.load
+        graph.node[n.name]['gen'] = n.gen
+        graph.node[n.name]['lat'] = n.lat
+        graph.node[n.name]['long'] = n.long
+        graph.node[n.name]['kind'] = n.kind
+        graph.node[n.name]['critical'] = n.critical
+
+        total_graph.node[n.name]['name'] = n.name
+        total_graph.node[n.name]['load'] = n.load
+        total_graph.node[n.name]['gen'] = n.gen
+        total_graph.node[n.name]['lat'] = n.lat
+        total_graph.node[n.name]['long'] = n.long
+        total_graph.node[n.name]['kind'] = n.kind
+        total_graph.node[n.name]['critical'] = n.critical
+
+        try:
+            if n.kind.upper() == "PV" or n.kind.upper() == "SWING":
+                gv.all_sources[n.name] = n.gen
+            else:
+                try:
+                    gv.all_loads[n.name] = n.load
+                    if int(n.critical) > 5:
+                        gv.all_critical_loads[n.name] = n.load
+                except ValueError:
+                    logging.error("No loads found in the network while making the graph.")
+        except ValueError:
+            logging.error("No power resource found in the network while making the graph.")
+
+    gv.graph_collection.append(graph)
+    gv.graph_collection.append(total_graph)
+
+    for g in gv.graph_collection:
+        for e in gv.obj_edges:
+            try:
+                g[e.from_node.lstrip()][e.to_node.lstrip()]['water_risk'] = e.water_risk
+                gv.water_risk_values.append(e.water_risk.lstrip())
+            except KeyError:
+                logging.info("No edge between %s and %s, so no water risk" % (e.from_node.lstrip(), e.to_node.lstrip()))
+                gv.water_risk_values.append(0)
+
+            try:
+                g[e.from_node.lstrip()][e.to_node.lstrip()]['wind_risk'] = e.wind_risk
+                gv.wind_risk_values.append(e.wind_risk.lstrip())
+            except KeyError:
+                logging.info(
+                    "[i] No edge between %s and %s, so no wind risk " % (e.from_node.lstrip(), e.to_node.lstrip()))
+                gv.wind_risk_values.append(0)
+
+            try:
+                g[e.from_node.lstrip()][e.to_node.lstrip()]['fire_risk'] = e.fire_risk
+                gv.fire_risk_values.append(e.fire_risk.lstrip())
+            except KeyError:
+                logging.info(
+                    "[i] No edge between %s and %s, so no fire risk " % (e.from_node.lstrip(), e.to_node.lstrip()))
+                gv.fire_risk_values.append(0)
+
+    network_dict["normal"] = graph
+    network_dict["total"] = total_graph
+    network_dict["n_open"] = gv.open_edges_list
+    network_dict["n_closed"] = gv.closed_edges_list
+
+    return network_dict
 
 # # #
 # C #

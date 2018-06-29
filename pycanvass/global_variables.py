@@ -18,11 +18,20 @@ data_from_device = {}
 global event
 event = {"water_risk": 0.069, "wind_risk": 0.1, "fire_risk": 1, "seismic_risk" : 1.0}
 
+global user_timezone
+user_timezone = ""
+
 global node_risk_dict
 node_risk_dict = {}
 
 global edge_risk_dict
 edge_risk_dict = {}
+
+global main_working_dir
+main_working_dir = ""
+
+global timeseries_data_created
+timeseries_data_created = False
 
 global wind_risk_values
 wind_risk_values = []

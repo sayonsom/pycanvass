@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib as mpl
 from pathlib import Path
 import networkx as nx
+import os
 import json
 import pycanvass.global_variables as gv
 # from mpl_toolkits.basemap import Basemap
@@ -31,8 +32,13 @@ interpolation = settings['visualization']['interpolation']
 # -------------------------------
 
 def _grid(x, y, z, resX=100, resY=100):
-    xi = np.linspace(min(x), max(x), resX)
-    yi = np.linspace(min(y), max(y), resY)
+    try:
+        xi = np.linspace(min(x), max(x), resX)
+        yi = np.linspace(min(y), max(y), resY)
+    except ValueError:
+        print("[x] Not enough data to create a contour map.\n[i] Probably, all nodes were destroyed during the event, and there's nothing left to calculate.")
+        logging.error("Not enough data to create a contour map.")
+        sys.exit()
     Z = griddata(x, y, z, xi, yi, interp=interpolation)
     X, Y = np.meshgrid(xi, yi)
     return X, Y, Z
@@ -111,7 +117,7 @@ def threat_graph():
         i += 1
     return threat_graph, threat_graph_pos
 
-def visualize(mode="contour_plot", graph=None, criteria="node_risk", title=""):
+def visualize(mode="contour_plot", filename = None, graph=None, criteria="", title=""):
     """
 
     :param mode: (Default: mode="contour_plot") Other options are "bar_plot", "line_chart")
@@ -124,19 +130,33 @@ def visualize(mode="contour_plot", graph=None, criteria="node_risk", title=""):
     project_settings = json.load(project_config_file)
     project_config_file.close()
 
-    if criteria == "node_risk":
-        expected_file_name = project_settings["project_name"] + "-nodal_calculation.csv"
-        expected_file_name = Path(expected_file_name)
+    if filename is not None:
+        expected_file_name = filename
+    else:
+        expected_file_name = "nodal_calculation.csv"
 
-    if expected_file_name.exists():
+    if criteria == "risk":
+        fields = ['lat', 'long', 'risk']
+    elif criteria == "repairability":
+        fields = ['lat', 'long', 'repairability']
+    else:
+        fields = ['lat', 'long', 'resiliency']
+
+    if os.path.isfile(expected_file_name):
         # RISK PLOTS
         util._hide_terminal_output()
-        fields = ['lat', 'long', 'risk']
         logging.info("[i] Plotting contour plot of the {} of {}".format(criteria, project_settings["project_name"]))
         df = pd.read_csv(expected_file_name, skipinitialspace=True, usecols=fields)
         x = df.long
         y = df.lat
-        z = df.risk
+
+        if criteria == "risk":
+            z = df.risk
+        elif criteria == "repairability":
+            z = df.repairability
+        else:
+            z = df.resiliency
+
         X, Y, Z = _grid(x, y, z)
         # fig = plt.figure()
         # ax = fig.gca()
@@ -203,16 +223,15 @@ def layout_model(file_or_folder_name, map_random=False):
     try:
         util._hide_terminal_output()
 
-        if not os.path.exists('C:\\Program Files (x86)\\Graphviz2.38\\bin'):
+        if not os.path.exists('C:\\Program Files (x86)\\Graphviz2.38\\bin') or not os.path.exists('C:\\Program Files\\Graphviz2.38\\bin'):
             print("[x] Dependency Error: Graphviz is not installed.")
             logging.error("Dependency Error: Graphviz is not installed.")
             print("[i] Layout of the GridLAB-D Models will not proceed.")
             print("[i] Please refer to documentation on how to get Graphviz, and set path correctly")
             return
-    except Exception:
-
+    except Exception as exception_error:
         print("[i] Please refer to documentation")
-        logging.error("Error in layout_model -- Tried to search if GraphViz is installed, and failed.")
+        logging.error("Error in layout_model -- Tried to search if GraphViz is installed, and failed. --> {}".format(exception_error))
         return
 
     if os.path.isfile(file_or_folder_name):

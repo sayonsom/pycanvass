@@ -5,6 +5,7 @@ import logging
 from pycanvass.global_variables import *
 import re
 from pycanvass.blocks import *
+from pycanvass.resiliency import *
 from pycanvass.utilities import _banner
 from pycanvass.distributionsystem import *
 from pycanvass.resiliency import *
@@ -14,6 +15,7 @@ from pycanvass.complexnetwork import *
 from pycanvass.forecast import *
 from pycanvass.data_visualization import *
 from pycanvass.eventloop import *
+
 import getpass
 
 

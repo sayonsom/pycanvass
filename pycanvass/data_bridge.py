@@ -83,6 +83,8 @@ class PairDevices(StreamRequestHandler):
             # command_string = 'python ' + gv.filepaths["metric"] + " " + str(ar)
             # os.system(command_string)
 
+
+
             # if ((ar[4] > 5.0) & (ar[4] < 95.0)):
             #     msg2 = pack('>fI', (ar[2] - ar[3]), 1)  # Pin is negative
             # elif (ar[4] < 5.0):
@@ -306,9 +308,14 @@ def _edge_search(e):
             return 0
 
 
-def edit_edge_status(edge_name, set_status=1, availability=1):
+def edit_edge_status(edge_name, set_status=1, availability=1, file_name=None):
     new_rows = []
-    e_file = gv.filepaths["edges"]
+
+    if file_name is None:
+        e_file = gv.filepaths["edges"]
+    else:
+        e_file = file_name.replace("\\","\\\\")
+
     edge_search_result = _edge_search(edge_name)
     with open(e_file, 'r+') as f:
         csvr = csv.reader(f)
@@ -335,3 +342,9 @@ def edit_edge_status(edge_name, set_status=1, availability=1):
         # Overwrite the old file with the modified rows
         writer = csv.writer(f)
         writer.writerows(new_rows)
+
+    gv.filepaths["edges"] = e_file
+
+    # working_dir = os.getcwd()
+    # gv.filepaths["edges"] = os.path.join(working_dir, e_file)
+    # print("updating global edge file", gv.filepaths["edges"])

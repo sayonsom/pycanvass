@@ -1,17 +1,20 @@
 import csv
 import pycanvass.global_variables as gv
 import subprocess
+import logging
 import json
 import pycanvass.blocks as blocks
+from pycanvass.all import *
 from pycanvass.all import *
 import pycanvass.resiliency as res
 import pycanvass.utilities as util
 import pycanvass.data_visualization as dv
+import pycanvass.resiliency as res
+from datetime import *
 import random
 import numpy as np
 import os
 import re
-
 
 def import_from_gridlabd(file_or_folder_name, map_random=False):
     """
@@ -454,21 +457,24 @@ def import_from_gridlabd(file_or_folder_name, map_random=False):
     return
 
 
-def write_gld_headers(filename):
+def write_gld_headers(filename, start_time):
     gldfile = open(filename, "w")
+    if start_time is not None:
+        start_time_value = start_time
+    else:
+        start_time_value = '2017-07-10 00:00:00 PDT'
     gldfile.write("// Project Name: {}\n"
                   "// Author: {}\n"
                   "// Auto-generated GridLAB-D File by Canvass\n"
                   "// (c) Canvass Copyright: Sayonsom Chanda.\n"
                   "//---------------------------\n\n"
                   "clock{{\n"
-                  "\tstarttime '2017-07-10 0:00:00';\n"
-                  "\tstoptime '2017-07-11 0:00:00';\n"
+                  "\tstarttime '{}';\n"
                   "}}\n"
                   "module powerflow{{\n"
-                  "\tsolver_method NR;\n"
+                  "\tsolver_method FBS;\n"
                   "}}\n\n"
-                  "module tape;\n\n".format(gv.project["project_name"], gv.project["author"]))
+                  "module tape;\n\n".format(gv.project["project_name"], gv.project["author"], start_time_value))
     gldfile.close()
 
 
@@ -483,6 +489,18 @@ def _distance_between_two_nodes(n1,n2):
     p2 = [float(n2.lat),float(n2.long)]
     distance_in_ft = np.floor(res.distant_between_two_points(p1,p2)*3280.84)
     return distance_in_ft
+
+def write_power_system_state_recorder(filename):
+    gldfile = open(filename, "a")
+    gldfile.write("\n\nobject voltdump {\n"
+                  "\tfilename voltage_op.csv;\n"
+                  "\tmode polar;\n};\n"      
+                  "\nobject currdump {\n"
+                  "\tfilename current_op.csv;\n"
+                  "\tmode polar;\n"
+                  "};\n\n")
+    gldfile.close()
+
 
 
 def write_default_configurations_to_glm(filename):
@@ -503,6 +521,30 @@ def write_default_configurations_to_glm(filename):
                   "\tz31 0.15+0.38j;\n"
                   "\tz32 0.15+0.42j;\n"
                   "\tz33 0.46+1.06j;\n"
+                  "}\n\n"
+                  "\n\nobject transformer_configuration {\n"
+                  "\tname default_xmfr_config;\n"
+                  "\tconnect_type DELTA_GWYE;\n"
+                  "\tpower_rating 500;\n"
+                  "\tprimary_voltage 4160;\n"
+                  "\tsecondary_voltage 480;\n"
+                  "\tresistance 0.01;\n"
+                  "\treactance 0.08;\n"
+                  "}\n\n"
+                  "\n\nobject regulator_configuration {\n"
+                  "\tname default_regulator_config;\n"
+                  "\tconnect_type WYE_WYE;\n"
+                  "\tband_width 2;\n"
+                  "\tband_center 122;\n"
+                  "\tcompensator_r_setting_A 3;\n"
+                  "\tcompensator_r_setting_B 3;\n"
+                  "\tcompensator_r_setting_C 3;\n"
+                  "\tcompensator_x_setting_A 9;\n"
+                  "\tcompensator_x_setting_B 9;\n"
+                  "\tcompensator_x_setting_C 9;\n"
+                  "\tpower_transducer_ratio 40;\n"
+                  "\traise_taps 16;\n"
+                  "\tlower_taps 16;\n"
                   "}\n\n")
     gldfile.close()
 
@@ -518,6 +560,46 @@ def write_edges_to_glm(filename):
             next(edges)  # Skip header row
 
         for edge in edges:
+
+            if edge[1].lstrip() == "regulator":
+                edge_name = edge[0]
+                from_node = edge[2].lstrip()
+                node_obj = res.node_object_from_node_name(from_node)
+                gldfile.write("\nobject regulator {{\n"
+                              "\tname {};\n"
+                              "\tphases {};\n"
+                              "\tfrom {};\n"
+                              "\tto {};\n"
+                              "\tconfiguration default_regulator_config;\n"
+                              "}}\n".format(edge_name, node_obj.phase, edge[2].lstrip(), edge[3].lstrip()))
+
+            if edge[1].lstrip() == "transformer":
+                edge_name = edge[0]
+                from_node = edge[2].lstrip()
+                node_obj = res.node_object_from_node_name(from_node)
+                gldfile.write("\nobject transformer {{\n"
+                              "\tname {};\n"
+                              "\tphases {};\n"
+                              "\tfrom {};\n"
+                              "\tto {};\n"
+                              "\tconfiguration default_xmfr_config;\n"
+                              "}}\n".format(edge_name, node_obj.phase, edge[2].lstrip(), edge[3].lstrip()))
+
+            if edge[1].lstrip() == "switch":
+                edge_name = edge[0]
+                from_node = edge[2].lstrip()
+                node_obj = res.node_object_from_node_name(from_node)
+                status_string = "CLOSED"
+                if edge[4].lstrip() == "0":
+                    status_string = "OPEN"
+                gldfile.write("\nobject switch {{\n"
+                              "\tname {};\n"
+                              "\tphases {};\n"
+                              "\tfrom {};\n"
+                              "\tto {};\n"
+                              "\tstatus {};\n"
+                              "}}\n".format(edge_name, node_obj.phase, edge[2].lstrip(), edge[3].lstrip(), status_string))
+
             if edge[1].lstrip() == "OH_Line":
                 edge_name = edge[0]
                 node1 = res.node_object_from_node_name(edge[2].lstrip())
@@ -525,12 +607,12 @@ def write_edges_to_glm(filename):
                 dist_between_nodes = _distance_between_two_nodes(node1,node2)
                 gldfile.write("\nobject overhead_line {{\n"
                               "\tname {};\n"
-                              "\tphases ABCN;\n"
+                              "\tphases {};\n"
                               "\tfrom {};\n"
                               "\tto {};\n"
                               "\tlength {};\n"
                               "\tconfiguration default_oh_line_config;\n"
-                              "}}\n".format(edge_name, edge[2].lstrip(), edge[3].lstrip(), dist_between_nodes))
+                              "}}\n".format(edge_name, node1.phase, edge[2].lstrip(), edge[3].lstrip(), dist_between_nodes))
 
     gldfile.close()
 
@@ -548,8 +630,9 @@ def write_recorder_to_glm(filename,n):
 
 
 def write_nodes_to_glm(filename):
-    n_file = gv.filepaths["nodes"]
+    n_file = gv.filepaths["edges"]
     gldfile = open(filename, "a")
+    written_nodes = []
     with open(n_file) as f:
         has_header = csv.Sniffer().has_header(f.read(1024))
         f.seek(0)
@@ -557,23 +640,67 @@ def write_nodes_to_glm(filename):
         if has_header:
             next(nodes)  # Skip header row
 
+        written_nodes = []
+
         for node in nodes:
-            node_name = node[0]
-            if node[7].lstrip() == "SWING":
-                gldfile.write("object node {{\n"
-                              "\tname {};\n"
-                              "\tphases ABCN;\n"
-                              "\tnominal_voltage {}.0;\n"
-                              "\tbustype SWING;\n"
-                              "}}\n".format(node_name, node[4].lstrip()))
-            else:
-                gldfile.write("object node {{\n"
-                              "\tname {};\n"
-                              "\tphases ABCN;\n"
-                              "\tnominal_voltage {}.0;\n"
-                              "}}\n".format(node_name, node[4].lstrip()))
+            from_node = node[2].lstrip()
+            to_node = node[3].lstrip()
 
+            if from_node not in written_nodes:
+                node_obj = res.node_object_from_node_name(from_node)
+                if node_obj.kind.lstrip() == "SWING":
+                    gldfile.write("object node {{\n"
+                                  "\tname {};\n"
+                                  "\tphases {};\n"
+                                  "\tnominal_voltage {}.0;\n"
+                                  "\tbustype SWING;\n"
+                                  "}};\n\n".format(from_node, node_obj.phase, node_obj.voltage))
+                elif node_obj.kind.lstrip() == "PQ":
+                    load_value_kva = float(node_obj.load.lstrip())/3.0
+                    gldfile.write("object load {{\n"
+                                  "\tname {};\n"
+                                  "\tphases {};\n"
+                                  "\tnominal_voltage {}.0;\n"
+                                  "\tconstant_power_A {};\n"
+                                  "\tconstant_power_B {};\n"
+                                  "\tconstant_power_C {};\n"
+                                  "}};\n".format(from_node, node_obj.phase, node_obj.voltage, load_value_kva, load_value_kva, load_value_kva))
+                else:
+                    gldfile.write("object node {{\n"
+                                  "\tname {};\n"
+                                  "\tphases {};\n"
+                                  "\tnominal_voltage {}.0;\n"
+                                  "}};\n\n".format(from_node, node_obj.phase, node_obj.voltage))
+                written_nodes.append(from_node)
 
+            if to_node not in written_nodes:
+                node_obj = res.node_object_from_node_name(to_node)
+                if node_obj.kind.lstrip() == "SWING":
+                    gldfile.write("object node {{\n"
+                                  "\tname {};\n"
+                                  "\tphases {};\n"
+                                  "\tnominal_voltage {}.0;\n"
+                                  "\tbustype SWING;\n"
+                                  "}};\n\n".format(to_node, node_obj.phase, node_obj.voltage))
+                elif node_obj.kind.lstrip() == "PQ":
+                    load_value_kva = float(node_obj.load.lstrip()) / 3.0
+                    gldfile.write("object load {{\n"
+                                  "\tname {};\n"
+                                  "\tphases {};\n"
+                                  "\tnominal_voltage {}.0;\n"
+                                  "\tconstant_power_A {};\n"
+                                  "\tconstant_power_B {};\n"
+                                  "\tconstant_power_C {};\n"
+                                  "}};\n\n".format(to_node, node_obj.phase, node_obj.voltage, load_value_kva,
+                                                   load_value_kva, load_value_kva))
+                else:
+                    gldfile.write("object node {{\n"
+                                  "\tname {};\n"
+                                  "\tphases {};\n"
+                                  "\tnominal_voltage {}.0;\n"
+                                  "}};\n\n".format(to_node, node_obj.phase, node_obj.voltage))
+
+                written_nodes.append(to_node)
 
     gldfile.close()
 
@@ -584,13 +711,26 @@ class DistributionSystem:
         self.graph = graph
 
 
-    def export_to_gridlabd(self):
+    def export_to_gridlabd(self, start_time=None):
         print("Convert Graph Model to gridlab-d file")
-        filename = str(gv.project["project_name"]) + "_model.glm"
-        write_gld_headers(filename)
+        filename = "gridlabd_model.glm"
+        gv.user_timezone = gv.project["timezone"]
+        if start_time is not None:
+            datetime_obj = datetime.strptime(start_time, "%Y/%m/%d %H:%M:%S")
+            month_value = "{:02d}".format(datetime_obj.month)
+            hour_value = "{:02d}".format(datetime_obj.hour)
+            day_value = "{:02d}".format(datetime_obj.day)
+            minute_value = "{:02d}".format(datetime_obj.minute)
+            second_value = "{:02d}".format(datetime_obj.second)
+            start_time_value = str(datetime_obj.year) + "-" + month_value + "-" + day_value + " " + hour_value + ":" + minute_value + ":" + second_value + " " + gv.user_timezone
+        else:
+            start_time_value = None
+
+        write_gld_headers(filename, start_time_value)
         write_default_configurations_to_glm(filename)
         write_nodes_to_glm(filename)
         write_edges_to_glm(filename)
+        write_power_system_state_recorder(filename)
 
     def install_sensor(self,sensor="mpmu",*args):
         filename = str(gv.project["project_name"]) + "_model.glm"
@@ -603,12 +743,17 @@ class DistributionSystem:
 
 
 
-    def gridlabd_powerflow(self):
-        filename = str(gv.project["project_name"]) + "_model.glm"
+    def gridlabd_powerflow(self, mode=None):
+        if mode is None:
+            filename = str(gv.project["project_name"]) + "_model.glm"
+        elif mode.lstrip() == "timeseries":
+            filename = "gridlabd_model.glm"
+        else:
+            filename = "gridlabd_model.glm"
         try:
             subprocess.check_call(['gridlabd', filename])
         except subprocess.CalledProcessError:
-            print("[x] GridLAB-D Model Compilation Failed.")
+            print("[x] GridLAB-D Simulation was not completed.")
 
     def import_from_gridlabd(self):
         print("import from gridlab-d")

@@ -5,14 +5,14 @@ def readme():
         return f.read()
 
 setup(name='pycanvass',
-      version='0.0.2.16',
+      version='0.0.2.20',
       description='Python API for Cyber Attack and Network Vulnerability Assessment Software for Smartgrid',
       long_description=readme(),
       classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
         'Intended Audience :: Science/Research',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
       ],
       keywords='smartgrid power system substation cyber-attack simulation rtds gridlabd python',
@@ -29,8 +29,6 @@ setup(name='pycanvass',
           'pandas',
           'sklearn',
           'graphviz',
-          'progressbar2',
-          'reverse_geocoder',
       ],
       extras_require = {
             'test': ['coverage', 'pytest', 'pytest-cov'],

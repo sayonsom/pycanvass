@@ -10,7 +10,7 @@ import pycanvass.complexnetwork as cn
 import pycanvass.data_bridge as db
 import pycanvass.data_visualization as dv
 import pycanvass.global_variables as gv
-import pycanvass.eventloop as el
+
 from networkx import DiGraph
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -145,7 +145,7 @@ def edge_info(edgename):
     return
 
 
-def reconfigure(node_to_restore, damaged_graph):
+def reconfigure(node_to_restore, damaged_graph, criteria="least_impact", filename=None):
     """
     Algorithm: Kruskal Minimum Spanning Tree
     Damaged graph.
@@ -156,7 +156,10 @@ def reconfigure(node_to_restore, damaged_graph):
     generator_nodes = []
     complete_graph = gv.graph_collection[3]
     undir_complete_graph = nx.Graph()  # complete_graph.to_undirected()
-    e_file = gv.filepaths["edges"]
+    if filename is None:
+        e_file = gv.filepaths["edges"]
+    else:
+        e_file = filename
     # Calculate the impact on edge and attribute it to undir_complete_graph:
     complete_graph_edgelist = complete_graph.edges()
     temp_edge_impact_dict = {}
@@ -219,7 +222,39 @@ def reconfigure(node_to_restore, damaged_graph):
                     elif edge_search_result_2 != 0:
                         new_graph.add_edge(m[1], m[0], weight=float(impact))
 
+    print("Edges in Restored Path:")
     print(new_graph.edges())
+
+    g_new_edges = set(new_graph.edges())
+
+    # Edge status comparison:
+    g_old = gv.graph_collection[0]
+    g_old_edges = set(g_old.edges())
+
+    turn_on = g_new_edges.difference(g_old_edges)
+    controllable_switches = {}
+    for t in turn_on:
+        edge_of_path_name_1 = t[0] + "_to_" + t[1]
+        edge_of_path_name_2 = t[1] + "_to_" + t[0]
+        edge_search_result_1 = db._edge_search(edge_of_path_name_1)
+        edge_search_result_2 = db._edge_search(edge_of_path_name_2)
+        try:
+            with open(e_file, 'r+') as f:
+                csvr = csv.reader(f)
+                csvr = list(csvr)
+                for row in csvr:
+                    if row[0].lstrip() == edge_of_path_name_1 or row[0].lstrip() == edge_of_path_name_2:
+                        if edge_search_result_1 != 0 or edge_search_result_2 != 0:
+                            edge_status_list[row[0]] = row[4]
+                            if row[1].lstrip() == "switch":
+                                # print("[i] Switch {} found!".format(row[0]))
+                                controllable_switches[row[0]] = row[4]
+        except:
+            print("[x] Edge could not be queried for status for the nodes.")
+
+
+
+
     cn.add_node_attr(new_graph)
     cn.lat_long_layout(new_graph, show=True, save=False, title="Minimum Spanning Tree Restoration")
 
@@ -228,6 +263,8 @@ def reconfigure(node_to_restore, damaged_graph):
         print(cyclic_path)
     except nx.NetworkXNoCycle:
         print("[i] All loads could be picked without loop elimination.")
+
+    return controllable_switches
 
 
 def restore(from_node, to_node, commit=False, control=False):
@@ -558,8 +595,11 @@ def node_resiliency(n, verbose=False):
     generator_nodes = []
     path_counter = 0
     for k, v in graph.nodes(data=True):
-        if float(v['gen']) > 0 or v['gen'].lstrip() == "inf":
-            generator_nodes.append(k)
+        try:
+            if float(v['gen']) > 0 or v['gen'].lstrip() == "inf":
+                generator_nodes.append(k)
+        except:
+            continue
     # print("[i] Available generator nodes that can be used to restore {} are {}".format(n, generator_nodes))
     for g in generator_nodes:
         path = nx.all_simple_paths(graph, n, g)
@@ -837,10 +877,10 @@ def impact_on_edge(e):
     return x
 
 
-
-
 def nodal_calculations(graph, visualize=True, title=""):
 
+    print(graph.nodes())
+    print(graph.edges())
     nodes = graph.nodes()
     sort_node_by_type()
 
@@ -848,7 +888,7 @@ def nodal_calculations(graph, visualize=True, title=""):
     project_settings = json.load(project_config_file)
     project_config_file.close()
     logging.info("Performing node risk calculation for all nodes")
-    file_name = project_settings["project_name"] + "-nodal_calculation.csv"
+    file_name = "nodal_calculation.csv"
 
     with open(file_name, 'w+') as node_file:
         node_file.write('name,lat,long,risk,resiliency,repairability\n')
@@ -972,7 +1012,7 @@ def weigh_the_sections(graph, attr_name="impact_on_edge"):
         # print("[i] Weighing {} by anticipated event impact {}".format(edge_name, x))
 
 
-def resiliency(analysis='nodal'):
+def resiliency_2(analysis='nodal'):
     """
     This function helps compute the resiliency metric of the network of a
     node, or a network

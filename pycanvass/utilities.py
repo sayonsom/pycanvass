@@ -6,7 +6,7 @@ import pandas as pd
 All the quick utility functions, frequently called in other libraries
 """
 
-_version = "0.0.2.16"
+_version = "0.0.2.20"
 
 def reset_data():
 
@@ -36,6 +36,7 @@ def _data_banner():
     print("|====================|============|====================|==========|=======================================|")
     print("|TIME STAMP          | Direction  | DEVICE IP          | PORT     | DATA RECEIVED                         |")
     print("|====================|============|====================|==========|=======================================|")
+
 
 def _hide_terminal_output():
     """
