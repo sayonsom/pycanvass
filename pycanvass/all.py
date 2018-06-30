@@ -15,6 +15,7 @@ from pycanvass.complexnetwork import *
 from pycanvass.forecast import *
 from pycanvass.data_visualization import *
 from pycanvass.eventloop import *
+from pycanvass.geo_data_processing import *
 
 import getpass
 
