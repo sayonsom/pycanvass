@@ -6,7 +6,7 @@ import pandas as pd
 All the quick utility functions, frequently called in other libraries
 """
 
-_version = "0.0.2.20"
+_version = "0.0.2.23"
 
 def reset_data():
 

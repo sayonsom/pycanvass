@@ -184,7 +184,7 @@ def reverse_time_step(timestampvalue):
     reverse_time_step_string = year + "/" + month + "/" + day + " " + hour + ":" + minute + second
     return reverse_time_step_string
 
-def timeseries_simulation(simulation_folder, start_time="", interval_time="", stop_time=""):
+def timeseries_simulation(simulation_folder, start_time="", interval_time="", stop_time="", powerflow = False):
 
     subfolders = [f.name for f in os.scandir(simulation_folder) if f.is_dir()]
 
@@ -201,18 +201,21 @@ def timeseries_simulation(simulation_folder, start_time="", interval_time="", st
 
         mygraph = network["normal"]
 
-        try:
-            from pycanvass.utilities import _hide_terminal_output
-            print("[i] Attempting power-flow for {}".format(timestring))
-            _hide_terminal_output()
-            dist_system = ds.DistributionSystem(mygraph)
-            dist_system.export_to_gridlabd(start_time=timestring)
-            dist_system.gridlabd_powerflow(mode="timeseries")
+        if powerflow is True:
 
+            try:
+                from pycanvass.utilities import _hide_terminal_output
+                _hide_terminal_output()
+                dist_system = ds.DistributionSystem(mygraph)
+                print("[i] Attempting power-flow for {}".format(timestring))
+                dist_system.export_to_gridlabd(start_time=timestring)
+                dist_system.gridlabd_powerflow(mode="timeseries")
+            except Exception as e:
+                print("[x] GridLAB-D Model simulation could not be completed for {}\n... Read events log file for details".format(timestring))
+                logging.error(" GridLAB-D Model simulation could not be completed for {}\n\tDetails: {}".format(timestring, e))
 
-        except Exception as e:
-            print("[x] GridLAB-D Model simulation could not be completed for {}\n... Read events log file for details".format(timestring))
-            logging.error(" GridLAB-D Model simulation could not be completed for {}\n\tDetails: {}".format(timestring, e))
+        else:
+            logging.info("skipping power flow for time-step {}".format(timestring))
 
 
 

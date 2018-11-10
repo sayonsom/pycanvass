@@ -189,7 +189,6 @@ def reconfigure(node_to_restore, damaged_graph, criteria="least_impact", filenam
                             risk_profile_data.write(write_string)
 
     cn.add_node_attr(undir_complete_graph)
-
     for k, v in undir_complete_graph.nodes(data=True):
         if float(v['gen']) > 0 or v['gen'].lstrip() == "inf":
             generator_nodes.append(k)
@@ -613,28 +612,32 @@ def node_resiliency(n, verbose=False):
     threat_anchor = primary_threat_anchor_of_node(node)
 
     if float(threat_anchor["wind_risk"]) > 75:
-        if node_res != 0:
-            node_res = node_res * float(node.wind_cc.lstrip()) / 10.0
-        else:
-            node_res = float(node.wind_cc.lstrip()) / 10.0
+        node_res = 0
+        # if node_res != 0:
+        #     node_res = node_res * float(node.wind_cc.lstrip()) / 10.0
+        # else:
+        #     node_res = float(node.wind_cc.lstrip()) / 10.0
 
     if float(threat_anchor["water_risk"]) > 2.0:
+        node_res = 0
         if node_res != 0:
             node_res = node_res * float(node.water_cc.lstrip()) / 10.0
         else:
             node_res = float(node.water_cc.lstrip()) / 10.0
 
     if float(threat_anchor["seismic_risk"]) > 5:
-        if node_res != 0:
-            node_res = node_res * float(node.seismic_cc.lstrip()) / 10.0
-        else:
-            node_res = float(node.seismic_cc.lstrip()) / 10.0
+        node_res = 0
+        # if node_res != 0:
+        #     node_res = node_res * float(node.seismic_cc.lstrip()) / 10.0
+        # else:
+        #     node_res = float(node.seismic_cc.lstrip()) / 10.0
 
     if float(threat_anchor["fire_risk"]) > 150:
-        if node_res != 0:
-            node_res = node_res * float(node.fire_cc.lstrip()) / 10.0
-        else:
-            node_res = float(node.fire_cc.lstrip()) / 10.0
+        node_res = 0
+        # if node_res != 0:
+        #     node_res = node_res * float(node.fire_cc.lstrip()) / 10.0
+        # else:
+        #     node_res = float(node.fire_cc.lstrip()) / 10.0
 
     if verbose:
         print("-------------------------")
@@ -770,10 +773,12 @@ def node_risk_estimator(n, overall_bias=1):
              1 means maximum risk, 0 means minimum risk.
              Lower value is clearly better.
     """
-    return 1 - overall_bias * float(n[15].lstrip()) * (gv.event["wind_risk"] * float(n[11].lstrip()) +
-                                                       gv.event["water_risk"] * float(n[12].lstrip()) +
-                                                       gv.event["fire_risk"] * float(n[14].lstrip()) +
-                                                       gv.event["seismic_risk"] * float(n[13].lstrip())) / 40.0
+    # return 0.24
+
+    return 1 - overall_bias * float(n[15].lstrip()) * (float(gv.event["wind_risk"]) * float(n[11].lstrip()) +
+                                                       float(gv.event["water_risk"]) * float(n[12].lstrip()) +
+                                                       float(gv.event["fire_risk"]) * float(n[14].lstrip()) +
+                                                       float(gv.event["seismic_risk"]) * float(n[13].lstrip())) / 40.0
 
 
 def impact_on_edges():

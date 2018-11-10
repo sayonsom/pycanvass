@@ -149,6 +149,15 @@ def build_network(node_dict, edge_dict):
     graph = nx.Graph()
     total_graph = nx.DiGraph()
 
+    gv.obj_nodes = []
+    gv.obj_edges = []
+
+    for key, value in node_dict.items():
+        gv.obj_nodes.append(value)
+
+    for key, value in edge_dict.items():
+        gv.obj_edges.append(value)
+
     for edge in gv.obj_edges:
         total_graph.add_edge(edge.from_node.lstrip(), edge.to_node.lstrip())
         if edge.availability.lstrip() != "0":
@@ -435,7 +444,7 @@ def lat_long_layout(graph, show=False, save=True, title="Visualization"):
                            node_shape='x')
 
     nx.draw_networkx_labels(graph,
-                            pos=label_pos,
+                            pos=pos,
                             edge_labels=edge_labels)
 
     if show:

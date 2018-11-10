@@ -5,6 +5,7 @@ from pathlib import Path
 import networkx as nx
 import os
 import json
+import csv
 import pycanvass.global_variables as gv
 # from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
@@ -16,7 +17,9 @@ import re
 import os
 import pycanvass.utilities as util
 import random
+
 from pycanvass.all import *
+import geocoder as geo
 
 # SET PLOT VISUALIZATION DEFAULTS
 # -------------------------------
@@ -42,6 +45,41 @@ def _grid(x, y, z, resX=100, resY=100):
     Z = griddata(x, y, z, xi, yi, interp=interpolation)
     X, Y = np.meshgrid(xi, yi)
     return X, Y, Z
+
+
+def find_lat_long(filename):
+    new_rows = []
+    if os.path.isfile(filename):
+        with open(filename, 'r+') as f:
+            csvr = csv.reader(f, delimiter=';')
+            csvr = list(csvr)
+
+            for row in csvr:
+                new_row = row
+                new_row[0] = row[0]
+                new_row[1] = row[1]
+                if row[0].lstrip() == "substation":
+                    new_rows.append(new_row)
+                    continue
+
+                g = geo.google(row[1])
+                glatlng = g.latlng
+                try:
+                    new_row[2] = glatlng[0]
+                    new_row[3] = glatlng[1]
+                except TypeError:
+                    print("[x] Could not find latitude/longitude of {} at the given address {}. Is address correct? Is your internet working?".format(new_row[0], new_row[1]))
+                    logging.error("Tried to convert address to geo-cordinates, but could not complete the operation.")
+
+                new_rows.append(new_row)
+
+        with open(filename, 'w', newline='') as f:
+            # Overwrite the old file with the modified rows
+            writer = csv.writer(f, delimiter=';')
+            writer.writerows(new_rows)
+
+    else:
+        print("[x] Could not file a file with node names and addresses.")
 
 
 def view_on_a_map(filename, **kwargs):
@@ -222,13 +260,13 @@ def layout_model(file_or_folder_name, map_random=False):
     """
     try:
         util._hide_terminal_output()
-
-        if not os.path.exists('C:\\Program Files (x86)\\Graphviz2.38\\bin') or not os.path.exists('C:\\Program Files\\Graphviz2.38\\bin'):
-            print("[x] Dependency Error: Graphviz is not installed.")
-            logging.error("Dependency Error: Graphviz is not installed.")
-            print("[i] Layout of the GridLAB-D Models will not proceed.")
-            print("[i] Please refer to documentation on how to get Graphviz, and set path correctly")
-            return
+        #
+        # if not os.path.exists('C:\\Program Files (x86)\\Graphviz2.38\\bin') or not os.path.exists('C:\\Program Files\\Graphviz2.38\\bin'):
+        #     print("[x] Dependency Error: Graphviz is not installed.")
+        #     logging.error("Dependency Error: Graphviz is not installed.")
+        #     print("[i] Layout of the GridLAB-D Models will not proceed.")
+        #     print("[i] Please refer to documentation on how to get Graphviz, and set path correctly")
+        #     return
     except Exception as exception_error:
         print("[i] Please refer to documentation")
         logging.error("Error in layout_model -- Tried to search if GraphViz is installed, and failed. --> {}".format(exception_error))
